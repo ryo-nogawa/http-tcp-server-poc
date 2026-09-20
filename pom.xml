@@ -122,6 +122,27 @@
                 </plugin>
             </plugins>
         </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-toolchains-plugin</artifactId>
+                <version>3.3.0</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>toolchain</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <toolchains>
+                        <jdk>
+                            <version>${java-version}</version>
+                        </jdk>
+                    </toolchains>
+                </configuration>
+            </plugin>
+        </plugins>
     </build>
 
     <dependencies>
@@ -241,6 +262,6 @@
         <ojdbc.version>23.26.0.0.0</ojdbc.version>
         <!-- == Project Properties == -->
         <encoding>UTF-8</encoding>
-        <java-version>17</java-version>
+        <java-version>21</java-version>
     </properties>
 </project>
