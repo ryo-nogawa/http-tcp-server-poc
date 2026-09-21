@@ -22,3 +22,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Claude Code - 作業用Todoリスト
+.claude/todo/
