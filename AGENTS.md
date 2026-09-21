@@ -62,13 +62,17 @@ export CATALINA_HOME=/path/to/your/tomcat
 - 静的解析ツールとしてcheckstyleを毎回実行する
 - ファイルを修正した場合は、必ず `/test-report` を実行してテスト結果を確認する
 
+## マルチエージェント共通運用
+
+コードレビューを依頼された場合は、使用するコーディングエージェントにかかわらず、`.agents/skills/code-review/SKILL.md`を読み、その手順に従うこと。サブエージェントへ委任する場合は、`.agents/agents/code-reviewer.md`を依頼に明示して同じ役割定義を適用すること。レビューではコードを修正しない。
+
 コーディング規約は以下を参照してください。
 
-- @.claude/rules/error-handling.md
-- @.claude/rules/javadoc.md
-- @.claude/rules/naming.md
-- @.claude/rules/testing.md
-- @.claude/rules/config.md
-- @.claude/rules/lambda.md
-- @.claude/rules/concurrency.md
-- @.claude/rules/comment.md
+- @.agents/rules/error-handling.md
+- @.agents/rules/javadoc.md
+- @.agents/rules/naming.md
+- @.agents/rules/testing.md
+- @.agents/rules/config.md
+- @.agents/rules/lambda.md
+- @.agents/rules/concurrency.md
+- @.agents/rules/comment.md

@@ -1,7 +1,6 @@
 ---
 name: create-pr
 description: 作業ブランチの変更をコミット・プッシュし、.github/pull_request_template.mdのテンプレートに準拠したプルリクエストをgh CLIで作成する。「プルリクを作成して」「PRを作って」「プルリクエストを出して」などのキーワードで起動する。
-model: sonnet
 ---
 
 # プルリクエスト作成
@@ -13,19 +12,19 @@ model: sonnet
 以下をBashツールで確認し、満たさない場合はプルリクエストを作成せずユーザーに報告する。
 
 1. **作業ブランチにいること**: `git branch --show-current`がmain以外であること。mainの場合は中断する。
-2. **テストがパスしていること**: 直前の`test-runner`の結果でJUnitのNG件数とCheckstyle違反件数がいずれも0件であること。結果が未取得の場合は、Agentツールで`test-runner`サブエージェント（`subagent_type: "test-runner"`）を呼び出して確認する。NGが1件以上ある場合は中断する。
+2. **テストがパスしていること**: 直前のテスト結果でJUnitのNG件数とCheckstyle違反件数がいずれも0件であること。結果が未取得の場合は、利用可能なテスト実行担当へ委任するか、`mvn test`を実行して確認する。NGが1件以上ある場合は中断する。
 
 ## 実行手順
 
 1. Readツールで`.github/pull_request_template.md`を読み込み、セクション構成とHTMLコメントの指示（記載量の上限）を確認する。
 2. 未コミットの変更がある場合はコミットする。
    - `git status`と`git diff HEAD`で変更内容を確認する。
-   - コミットメッセージは`commit-message`スキルに従い、Conventional Commits形式の日本語で作成する。
+   - コミットメッセージはConventional Commits形式の日本語で作成する。
    - 変更ファイルは個別に指定してステージングする（`git add -A`は使用しない）。
 3. `git push -u origin {ブランチ名}`で作業ブランチをリモートへプッシュする。
 4. `git diff main...HEAD --stat`および`git log main..HEAD --oneline`で、mainとの差分全体を把握する。直近のコミットだけでなく、ブランチ上の全コミットを対象とする。
 5. タイトルとIssue番号を決定する。
-   - **タイトル**: `commit-message`スキルに従い、Conventional Commits形式の日本語で記載する（例: `feat: TCPエコーサーバーを追加`）。70文字以内とする。
+   - **タイトル**: Conventional Commits形式の日本語で記載する（例: `feat: TCPエコーサーバーを追加`）。70文字以内とする。
    - **Issue番号**: ブランチ名（`<type>/#<Issue番号>-<概要>`形式）から抽出する。抽出できない場合は`gh issue list`で該当Issueを確認する。
 6. Bashツールで`gh pr create`を実行する。本文はHEREDOCで渡す。
 
@@ -48,7 +47,7 @@ model: sonnet
 
    Closes #{Issue番号}
 
-   🤖 Generated with [Claude Code](https://claude.com/claude-code)
+   {エージェント識別行}
    EOF
    )"
    ```
@@ -68,6 +67,6 @@ model: sonnet
 ## 注意事項
 
 - `Closes #{Issue番号}`を必ず記載し、マージ時にIssueが自動クローズされるようにする。
-- 本文の末尾には`🤖 Generated with [Claude Code](https://claude.com/claude-code)`を付与する。
+- 本文末尾のエージェント識別行は、利用中のエージェントが定める形式にする。Claude Codeから実行する場合は`🤖 Generated with [Claude Code](https://claude.com/claude-code)`を付与する。
 - mainブランチへの直接プッシュ、および強制プッシュ（`--force`）は行わない。
 - プルリクエストのマージは行わない。マージはユーザーが判断する。

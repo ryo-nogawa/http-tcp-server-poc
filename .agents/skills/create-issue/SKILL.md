@@ -1,7 +1,6 @@
 ---
 name: create-issue
 description: 改修内容を整理し、.github/ISSUE_TEMPLATE/issue.mdのテンプレートに準拠したGitHub Issueをgh CLIで作成する。「Issueを作成して」「起票して」「チケットを切って」などのキーワードで起動する。
-model: sonnet
 ---
 
 # Issue作成
@@ -57,5 +56,5 @@ model: sonnet
 
 ## 注意事項
 
-- Issueの作成のみを行う。ブランチ作成・実装には進まない（開発フロー全体は`.claude/rules/development-flow.md`を参照）。
+- Issueの作成のみを行う。ブランチ作成・実装には進まない。
 - 同じ内容のIssueが既に存在しないか、`gh issue list`で確認してから作成する。
