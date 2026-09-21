@@ -2,10 +2,8 @@ package com.example.http.tcp.server.poc.config.web;
 
 import static org.springframework.security.web.util.matcher.AntPathRequestMatcher.antMatcher;
 
-import java.util.LinkedHashMap;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -13,11 +11,8 @@ import org.springframework.security.config.annotation.web.configuration.WebSecur
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.access.AccessDeniedHandlerImpl;
-import org.springframework.security.web.access.DelegatingAccessDeniedHandler;
 import org.springframework.security.web.access.expression.DefaultWebSecurityExpressionHandler;
 import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
-import org.springframework.security.web.csrf.InvalidCsrfTokenException;
-import org.springframework.security.web.csrf.MissingCsrfTokenException;
 import org.terasoluna.gfw.security.web.logging.UserIdMDCPutFilter;
 
 /**
@@ -51,6 +46,8 @@ public class SpringSecurityConfig {
         http.exceptionHandling(ex -> ex.accessDeniedHandler(accessDeniedHandler()));
         http.addFilterAfter(userIdMdcPutFilter(), AnonymousAuthenticationFilter.class);
         http.sessionManagement(Customizer.withDefaults());
+        // PoCのため、CSRF保護を無効化する
+        http.csrf(csrf -> csrf.disable());
         http.authorizeHttpRequests(authz -> authz.requestMatchers(antMatcher("/**")).permitAll());
 
         return http.build();
@@ -63,26 +60,11 @@ public class SpringSecurityConfig {
      */
     @Bean("accessDeniedHandler")
     public AccessDeniedHandler accessDeniedHandler() {
-        LinkedHashMap<Class<? extends AccessDeniedException>, AccessDeniedHandler> errorHandlers =
-                new LinkedHashMap<>();
-
-        // Invalid CSRF authenticator error handler
-        AccessDeniedHandlerImpl invalidCsrfTokenErrorHandler = new AccessDeniedHandlerImpl();
-        invalidCsrfTokenErrorHandler
-                .setErrorPage("/WEB-INF/views/common/error/invalidCsrfTokenError.jsp");
-        errorHandlers.put(InvalidCsrfTokenException.class, invalidCsrfTokenErrorHandler);
-
-        // Missing CSRF authenticator error handler
-        AccessDeniedHandlerImpl missingCsrfTokenErrorHandler = new AccessDeniedHandlerImpl();
-        missingCsrfTokenErrorHandler
-                .setErrorPage("/WEB-INF/views/common/error/missingCsrfTokenError.jsp");
-        errorHandlers.put(MissingCsrfTokenException.class, missingCsrfTokenErrorHandler);
-
         // Default error handler
         AccessDeniedHandlerImpl defaultErrorHandler = new AccessDeniedHandlerImpl();
         defaultErrorHandler.setErrorPage("/WEB-INF/views/common/error/accessDeniedError.jsp");
 
-        return new DelegatingAccessDeniedHandler(errorHandlers, defaultErrorHandler);
+        return defaultErrorHandler;
     }
 
     /**
