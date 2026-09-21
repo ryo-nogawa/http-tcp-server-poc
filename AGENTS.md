@@ -60,6 +60,7 @@ export CATALINA_HOME=/path/to/your/tomcat
 3. **Refactor**: テストが通ったままの状態を保ちながらコードをリファクタリングし、完成させる
 
 - 静的解析ツールとしてcheckstyleを毎回実行する
+- ファイルを修正した場合は、必ず `/test-report` を実行してテスト結果を確認する
 
 コーディング規約は以下を参照してください。
 
