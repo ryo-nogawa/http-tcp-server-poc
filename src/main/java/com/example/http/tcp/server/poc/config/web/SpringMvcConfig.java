@@ -53,6 +53,7 @@ public class SpringMvcConfig implements WebMvcConfigurer {
 
     /**
      * Configure {@link PropertySourcesPlaceholderConfigurer} bean.
+     *
      * @param properties Property files to be read
      * @return Bean of configured {@link PropertySourcesPlaceholderConfigurer}
      */
@@ -75,6 +76,7 @@ public class SpringMvcConfig implements WebMvcConfigurer {
 
     /**
      * Configure {@link PageableHandlerMethodArgumentResolver} bean.
+     *
      * @return Bean of configured {@link PageableHandlerMethodArgumentResolver}
      */
     @Bean
@@ -84,6 +86,7 @@ public class SpringMvcConfig implements WebMvcConfigurer {
 
     /**
      * Configure {@link AuthenticationPrincipalArgumentResolver} bean.
+     *
      * @return Bean of configured {@link AuthenticationPrincipalArgumentResolver}
      */
     @Bean
@@ -126,6 +129,7 @@ public class SpringMvcConfig implements WebMvcConfigurer {
 
     /**
      * Common processes used in #addInterceptors.
+     *
      * @param registry {@link InterceptorRegistry}
      * @param interceptor {@link HandlerInterceptor}
      */
@@ -151,6 +155,7 @@ public class SpringMvcConfig implements WebMvcConfigurer {
 
     /**
      * Configure {@link TraceLoggingInterceptor} bean.
+     *
      * @return Bean of configured {@link TraceLoggingInterceptor}
      */
     @Bean
@@ -160,6 +165,7 @@ public class SpringMvcConfig implements WebMvcConfigurer {
 
     /**
      * Configure {@link TransactionTokenInterceptor} bean.
+     *
      * @return Bean of configured {@link TransactionTokenInterceptor}
      */
     @Bean
@@ -169,6 +175,7 @@ public class SpringMvcConfig implements WebMvcConfigurer {
 
     /**
      * Configure {@link CodeListInterceptor} bean.
+     *
      * @return Bean of configured {@link CodeListInterceptor}
      */
     @Bean
@@ -202,6 +209,7 @@ public class SpringMvcConfig implements WebMvcConfigurer {
 
     /**
      * Configure {@link RequestDataValueProcessor} bean.
+     *
      * @return Bean of configured {@link CompositeRequestDataValueProcessor}
      */
     @Bean("requestDataValueProcessor")
@@ -212,6 +220,7 @@ public class SpringMvcConfig implements WebMvcConfigurer {
 
     /**
      * Configure {@link CsrfRequestDataValueProcessor} bean.
+     *
      * @return Bean of configured {@link CsrfRequestDataValueProcessor}
      */
     @Bean
@@ -221,6 +230,7 @@ public class SpringMvcConfig implements WebMvcConfigurer {
 
     /**
      * Configure {@link TransactionTokenRequestDataValueProcessor} bean.
+     *
      * @return Bean of configured {@link TransactionTokenRequestDataValueProcessor}
      */
     @Bean
@@ -230,6 +240,7 @@ public class SpringMvcConfig implements WebMvcConfigurer {
 
     /**
      * Configure {@link SystemExceptionResolver} bean.
+     *
      * @param exceptionCodeResolver Bean defined by ApplicationContextConfig#exceptionCodeResolver
      * @see com.example.http.tcp.server.poc.config.app.ApplicationContextConfig#exceptionCodeResolver()
      * @return Bean of configured {@link SystemExceptionResolver}
@@ -268,6 +279,7 @@ public class SpringMvcConfig implements WebMvcConfigurer {
 
     /**
      * Configure messages logging AOP.
+     *
      * @param exceptionLogger Bean defined by ApplicationContextConfig#exceptionLogger
      * @see com.example.http.tcp.server.poc.config.app.ApplicationContextConfig#exceptionLogger()
      * @return Bean of configured {@link HandlerExceptionResolverLoggingInterceptor}
@@ -283,6 +295,7 @@ public class SpringMvcConfig implements WebMvcConfigurer {
 
     /**
      * Configure messages logging AOP advisor.
+     *
      * @param handlerExceptionResolverLoggingInterceptor Bean defined by
      *        #handlerExceptionResolverLoggingInterceptor
      * @see #handlerExceptionResolverLoggingInterceptor(ExceptionLogger)

@@ -32,6 +32,7 @@ public class ApplicationContextConfig {
     // @formatter:off
     /**
      * Configure {@link PasswordEncoder} bean.
+     *
      * @return Bean of configured {@link DelegatingPasswordEncoder}
      */
     @Bean("passwordEncoder")
@@ -49,6 +50,7 @@ public class ApplicationContextConfig {
 
     /**
      * Configure {@link Pbkdf2PasswordEncoder} bean.
+     *
      * @return Bean of configured {@link Pbkdf2PasswordEncoder}
      */
     @Bean
@@ -58,6 +60,7 @@ public class ApplicationContextConfig {
 
     /**
      * Configure {@link BCryptPasswordEncoder} bean.
+     *
      * @return Bean of configured {@link BCryptPasswordEncoder}
      */
     @Bean
@@ -80,6 +83,7 @@ public class ApplicationContextConfig {
 
     /**
      * Configure {@link PropertySourcesPlaceholderConfigurer} bean.
+     *
      * @param properties Property files to be read
      * @return Bean of configured {@link PropertySourcesPlaceholderConfigurer}
      */
@@ -93,6 +97,7 @@ public class ApplicationContextConfig {
 
     /**
      * Configure {@link MessageSource} bean.
+     *
      * @return Bean of configured {@link ResourceBundleMessageSource}
      */
     @Bean("messageSource")
@@ -104,6 +109,7 @@ public class ApplicationContextConfig {
 
     /**
      * Configure {@link ExceptionCodeResolver} bean.
+     *
      * @return Bean of configured {@link SimpleMappingExceptionCodeResolver}
      */
     @Bean("exceptionCodeResolver")
@@ -121,6 +127,7 @@ public class ApplicationContextConfig {
 
     /**
      * Configure {@link ExceptionLogger} bean.
+     *
      * @return Bean of configured {@link ExceptionLogger}
      */
     @Bean("exceptionLogger")
@@ -132,6 +139,7 @@ public class ApplicationContextConfig {
 
     /**
      * Configure {@link ExceptionLoggingFilter} bean.
+     *
      * @return Bean of configured {@link ExceptionLoggingFilter}
      */
     @Bean("exceptionLoggingFilter")

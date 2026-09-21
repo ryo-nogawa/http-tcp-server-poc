@@ -20,6 +20,7 @@ public class HttpTcpServerPocDomainConfig {
 
     /**
      * Configure {@link ResultMessagesLoggingInterceptor} bean.
+     *
      * @param exceptionLogger Bean defined by ApplicationContextConfig#exceptionLogger
      * @see com.example.http.tcp.server.poc.config.app.ApplicationContextConfig#exceptionLogger()
      * @return Bean of configured {@link ResultMessagesLoggingInterceptor}
@@ -34,6 +35,7 @@ public class HttpTcpServerPocDomainConfig {
 
     /**
      * Configure messages logging AOP advisor.
+     *
      * @param resultMessagesLoggingInterceptor Bean defined by #resultMessagesLoggingInterceptor
      * @see #resultMessagesLoggingInterceptor(ExceptionLogger)
      * @return Advisor configured for PointCut

@@ -28,6 +28,7 @@ public class SpringSecurityConfig {
 
     /**
      * Configure ignore security pattern.
+     *
      * @return Bean of configured {@link WebSecurityCustomizer}
      */
     @Bean
@@ -37,6 +38,7 @@ public class SpringSecurityConfig {
 
     /**
      * Configure {@link SecurityFilterChain} bean.
+     *
      * @param http Builder class for setting up authentication and authorization
      * @return Bean of configured {@link SecurityFilterChain}
      * @throws Exception Exception that occurs when setting HttpSecurity
@@ -55,6 +57,7 @@ public class SpringSecurityConfig {
 
     /**
      * Configure {@link AccessDeniedHandler} bean.
+     *
      * @return Bean of configured {@link AccessDeniedHandler}
      */
     @Bean("accessDeniedHandler")
@@ -83,6 +86,7 @@ public class SpringSecurityConfig {
 
     /**
      * Configure {@link DefaultWebSecurityExpressionHandler} bean.
+     *
      * @return Bean of configured {@link DefaultWebSecurityExpressionHandler}
      */
     @Bean("webSecurityExpressionHandler")
@@ -92,6 +96,7 @@ public class SpringSecurityConfig {
 
     /**
      * Configure {@link UserIdMDCPutFilter} bean.
+     *
      * @return Bean of configured {@link UserIdMDCPutFilter}
      */
     @Bean("userIdMDCPutFilter")
