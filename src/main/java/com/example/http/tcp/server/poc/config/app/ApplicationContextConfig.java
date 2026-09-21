@@ -39,11 +39,7 @@ public class ApplicationContextConfig {
     public PasswordEncoder passwordEncoder() {
         Map<String, PasswordEncoder> idToPasswordEncoder = new HashMap<>();
         idToPasswordEncoder.put("pbkdf2", pbkdf2PasswordEncoder());
-        idToPasswordEncoder.put("bcrypt", bCryptPasswordEncoder());
-        /* When using commented out PasswordEncoders, you need to add bcprov-jdk18on.jar to the dependency.
-        idToPasswordEncoder.put("argon2", argon2PasswordEncoder());
-        idToPasswordEncoder.put("scrypt", sCryptPasswordEncoder());
-        */
+        idToPasswordEncoder.put("bcrypt", bcryptPasswordEncoder());
         return new DelegatingPasswordEncoder("pbkdf2", idToPasswordEncoder);
     }
     // @formatter:on
@@ -64,22 +60,9 @@ public class ApplicationContextConfig {
      * @return Bean of configured {@link BCryptPasswordEncoder}
      */
     @Bean
-    public BCryptPasswordEncoder bCryptPasswordEncoder() {
+    public BCryptPasswordEncoder bcryptPasswordEncoder() {
         return new BCryptPasswordEncoder();
     }
-
-    // @formatter:off
-    /* When using commented out PasswordEncoders, you need to add bcprov-jdk18on.jar to the dependency.
-    @Bean
-    public Argon2PasswordEncoder argon2PasswordEncoder() {
-        return Argon2PasswordEncoder.defaultsForSpringSecurity_v5_8();
-    }
-    @Bean
-    public SCryptPasswordEncoder sCryptPasswordEncoder() {
-        return SCryptPasswordEncoder.defaultsForSpringSecurity_v5_8();
-    }
-    */
-    // @formatter:on
 
     /**
      * Configure {@link PropertySourcesPlaceholderConfigurer} bean.

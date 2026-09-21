@@ -1,6 +1,7 @@
 package com.example.http.tcp.server.poc.config.web;
 
 import static org.springframework.security.web.util.matcher.AntPathRequestMatcher.antMatcher;
+
 import java.util.LinkedHashMap;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -48,7 +49,7 @@ public class SpringSecurityConfig {
         http.formLogin(Customizer.withDefaults());
         http.logout(Customizer.withDefaults());
         http.exceptionHandling(ex -> ex.accessDeniedHandler(accessDeniedHandler()));
-        http.addFilterAfter(userIdMDCPutFilter(), AnonymousAuthenticationFilter.class);
+        http.addFilterAfter(userIdMdcPutFilter(), AnonymousAuthenticationFilter.class);
         http.sessionManagement(Customizer.withDefaults());
         http.authorizeHttpRequests(authz -> authz.requestMatchers(antMatcher("/**")).permitAll());
 
@@ -100,7 +101,7 @@ public class SpringSecurityConfig {
      * @return Bean of configured {@link UserIdMDCPutFilter}
      */
     @Bean("userIdMDCPutFilter")
-    public UserIdMDCPutFilter userIdMDCPutFilter() {
+    public UserIdMDCPutFilter userIdMdcPutFilter() {
         return new UserIdMDCPutFilter();
     }
 }

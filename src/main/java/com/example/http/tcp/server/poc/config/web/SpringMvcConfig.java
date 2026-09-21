@@ -1,5 +1,6 @@
 package com.example.http.tcp.server.poc.config.web;
 
+import com.example.http.tcp.server.poc.config.app.ApplicationContextConfig;
 import java.util.List;
 import java.util.Properties;
 import java.util.regex.Pattern;
@@ -15,14 +16,8 @@ import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.core.io.Resource;
 import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
 import org.springframework.http.HttpStatus;
-/* REMOVE THIS LINE IF YOU USE JPA
-import org.springframework.orm.jpa.support.OpenEntityManagerInViewInterceptor;
-REMOVE THIS LINE IF YOU USE JPA */
 import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.security.web.servlet.support.csrf.CsrfRequestDataValueProcessor;
-/* REMOVE THIS LINE IF YOU USE JPA
-import org.springframework.web.context.request.WebRequestInterceptor;
-REMOVE THIS LINE IF YOU USE JPA */
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.config.annotation.DefaultServletHandlerConfigurer;
@@ -120,11 +115,6 @@ public class SpringMvcConfig implements WebMvcConfigurer {
         addInterceptor(registry, traceLoggingInterceptor());
         addInterceptor(registry, transactionTokenInterceptor());
         addInterceptor(registry, codeListInterceptor());
-        // @formatter:off
-        /* REMOVE THIS LINE IF YOU USE JPA
-        addWebRequestInterceptor(registry, openEntityManagerInViewInterceptor());
-           REMOVE THIS LINE IF YOU USE JPA */
-        // @formatter:on
     }
 
     /**
@@ -137,21 +127,6 @@ public class SpringMvcConfig implements WebMvcConfigurer {
         registry.addInterceptor(interceptor).addPathPatterns("/**")
                 .excludePathPatterns("/resources/**");
     }
-
-    // @formatter:off
-    /* REMOVE THIS LINE IF YOU USE JPA
-    /**
-     * Common processes used in #addInterceptors.
-     * @param registry {@link InterceptorRegistry}
-     * @param interceptor {@link WebRequestInterceptor}
-     *REMOVE THIS COMMENT IF YOU USE JPA/
-    private void addWebRequestInterceptor(InterceptorRegistry registry,
-            WebRequestInterceptor interceptor) {
-        registry.addWebRequestInterceptor(interceptor).addPathPatterns("/**")
-                .excludePathPatterns("/resources/**");
-    }
-    REMOVE THIS LINE IF YOU USE JPA */
-    // @formatter:on 
 
     /**
      * Configure {@link TraceLoggingInterceptor} bean.
@@ -184,19 +159,6 @@ public class SpringMvcConfig implements WebMvcConfigurer {
         codeListInterceptor.setCodeListIdPattern(Pattern.compile("CL_.+"));
         return codeListInterceptor;
     }
-
-    // @formatter:off
-    /* REMOVE THIS LINE IF YOU USE JPA
-    /**
-     * Configure {@link OpenEntityManagerInViewInterceptor} bean.
-     * @return Bean of configured {@link OpenEntityManagerInViewInterceptor}
-     *REMOVE THIS COMMENT IF YOU USE JPA/
-    @Bean
-    public OpenEntityManagerInViewInterceptor openEntityManagerInViewInterceptor() {
-        return new OpenEntityManagerInViewInterceptor();
-    }
-    REMOVE THIS LINE IF YOU USE JPA */
-    // @formatter:on
 
     /**
      * {@inheritDoc}
@@ -241,8 +203,8 @@ public class SpringMvcConfig implements WebMvcConfigurer {
     /**
      * Configure {@link SystemExceptionResolver} bean.
      *
-     * @param exceptionCodeResolver Bean defined by ApplicationContextConfig#exceptionCodeResolver
-     * @see com.example.http.tcp.server.poc.config.app.ApplicationContextConfig#exceptionCodeResolver()
+     * @param exceptionCodeResolver Bean defined by
+     *        {@link ApplicationContextConfig#exceptionCodeResolver()}
      * @return Bean of configured {@link SystemExceptionResolver}
      */
     @Bean("systemExceptionResolver")
@@ -280,8 +242,8 @@ public class SpringMvcConfig implements WebMvcConfigurer {
     /**
      * Configure messages logging AOP.
      *
-     * @param exceptionLogger Bean defined by ApplicationContextConfig#exceptionLogger
-     * @see com.example.http.tcp.server.poc.config.app.ApplicationContextConfig#exceptionLogger()
+     * @param exceptionLogger Bean defined by
+     *        {@link ApplicationContextConfig#exceptionLogger()}
      * @return Bean of configured {@link HandlerExceptionResolverLoggingInterceptor}
      */
     @Bean("handlerExceptionResolverLoggingInterceptor")
@@ -306,7 +268,8 @@ public class SpringMvcConfig implements WebMvcConfigurer {
             HandlerExceptionResolverLoggingInterceptor handlerExceptionResolverLoggingInterceptor) {
         AspectJExpressionPointcut pointcut = new AspectJExpressionPointcut();
         pointcut.setExpression(
-                "execution(* org.springframework.web.servlet.HandlerExceptionResolver.resolveException(..))");
+                "execution(* org.springframework.web.servlet.HandlerExceptionResolver."
+                        + "resolveException(..))");
         return new DefaultPointcutAdvisor(pointcut, handlerExceptionResolverLoggingInterceptor);
     }
 }
