@@ -273,13 +273,11 @@
         <!-- == End Unit Test == -->
 
         <!-- == Begin Coding Support == -->
-        <!--
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <scope>provided</scope>
         </dependency>
-        -->
         <!-- == End Coding Support == -->
 
     </dependencies>
