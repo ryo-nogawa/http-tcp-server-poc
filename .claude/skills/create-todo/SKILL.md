@@ -1,6 +1,7 @@
 ---
 name: create-todo
 description: 実装方針を作業工程単位のTodoリストに分解し、チェックボックス付きMarkdownファイルとして`.claude/todo/`配下に生成する。「Todoを作成して」「Todoリストを生成して」「実装方針をTodoにして」などのキーワードで起動する。
+model: opus
 ---
 
 # Todoリスト生成

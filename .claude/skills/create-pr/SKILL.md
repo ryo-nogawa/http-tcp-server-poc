@@ -1,6 +1,7 @@
 ---
 name: create-pr
 description: 作業ブランチの変更をコミット・プッシュし、.github/pull_request_template.mdのテンプレートに準拠したプルリクエストをgh CLIで作成する。「プルリクを作成して」「PRを作って」「プルリクエストを出して」などのキーワードで起動する。
+model: sonnet
 ---
 
 # プルリクエスト作成
