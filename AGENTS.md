@@ -66,4 +66,9 @@ export CATALINA_HOME=/path/to/your/tomcat
 
 - @.claude/rules/error-handling.md
 - @.claude/rules/javadoc.md
+- @.claude/rules/naming.md
 - @.claude/rules/testing.md
+- @.claude/rules/config.md
+- @.claude/rules/lambda.md
+- @.claude/rules/concurrency.md
+- @.claude/rules/comment.md
