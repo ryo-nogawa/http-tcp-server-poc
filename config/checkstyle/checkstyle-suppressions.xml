@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+    "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN"
+    "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+
+<!--
+    テストコード（src/test配下）はJavadocの対象外とする。
+    詳細は .claude/rules/testing.md を参照。
+-->
+<suppressions>
+    <suppress checks=".*Javadoc.*" files="[/\\]src[/\\]test[/\\]"/>
+</suppressions>
