@@ -130,10 +130,10 @@ class HttpIntegrationTest {
 
             assertEquals(200, response.statusCode());
             String responseBody = response.body();
-            assertTrue(responseBody.contains("/get-http"),
-                    "Response should contain endpoint /get-http");
-            assertTrue(responseBody.contains("GET"),
-                    "Response should contain HTTP method GET");
+            assertTrue(responseBody.contains("<td>/get-http</td>"),
+                    "Response should contain endpoint /get-http in table cell");
+            assertTrue(responseBody.contains("<td>GET</td>"),
+                    "Response should contain HTTP method GET in table cell");
             // 受信時刻は yyyy-MM-dd HH:mm:ss.SSS フォーマット
             Pattern timestampPattern = Pattern.compile("\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{3}");
             assertTrue(timestampPattern.matcher(responseBody).find(),
@@ -165,8 +165,8 @@ class HttpIntegrationTest {
         @Test
         @DisplayName("Given: /get-httpへのPOSTリクエストが送信されたとき, "
                 + "When: リクエストを実行すると, "
-                + "Then: CSRF保護により403が返される")
-        void returns403ForPostMethodOnGetHttpEndpointDueToCsrfProtection()
+                + "Then: GETエンドポイントのためステータス405が返される")
+        void returns405ForPostMethodOnGetHttpEndpoint()
                 throws IOException, InterruptedException {
             String url = "http://localhost:" + port + "/get-http";
             HttpRequest request = HttpRequest.newBuilder()
@@ -177,7 +177,7 @@ class HttpIntegrationTest {
             HttpResponse<String> response =
                     httpClient.send(request, BodyHandlers.ofString());
 
-            assertEquals(403, response.statusCode());
+            assertEquals(405, response.statusCode());
         }
     }
 

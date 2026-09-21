@@ -24,12 +24,14 @@ class GetHttpControllerTest {
 
     private GetHttpController controller;
 
+    private RequestInfoService mockService;
+
     @Nested
     class 正常系 {
 
         @BeforeEach
         void setUp() {
-            RequestInfoService mockService = mock(RequestInfoService.class);
+            mockService = mock(RequestInfoService.class);
             controller = new GetHttpController(mockService);
         }
 
@@ -38,9 +40,6 @@ class GetHttpControllerTest {
                 + "When: getHttpメソッドを実行すると, "
                 + "Then: ビュー名がgethttp/getHttpで属性requestInfoが追加されている")
         void returnsGetHttpViewAndAddsRequestInfoToModel() {
-            RequestInfoService mockService = mock(RequestInfoService.class);
-            controller = new GetHttpController(mockService);
-
             HttpServletRequest mockRequest = mock(HttpServletRequest.class);
             Model mockModel = mock(Model.class);
 
@@ -66,9 +65,6 @@ class GetHttpControllerTest {
                 + "When: getHttpメソッドを実行すると, "
                 + "Then: リクエスト情報がサービスに正しく渡されている")
         void passesCorrectParametersToService() {
-            RequestInfoService mockService = mock(RequestInfoService.class);
-            controller = new GetHttpController(mockService);
-
             HttpServletRequest mockRequest = mock(HttpServletRequest.class);
             Model mockModel = mock(Model.class);
 
@@ -94,7 +90,7 @@ class GetHttpControllerTest {
 
         @BeforeEach
         void setUp() {
-            RequestInfoService mockService = mock(RequestInfoService.class);
+            mockService = mock(RequestInfoService.class);
             controller = new GetHttpController(mockService);
         }
 
@@ -103,9 +99,6 @@ class GetHttpControllerTest {
                 + "When: getHttpメソッドを実行すると, "
                 + "Then: 例外がそのままスローされる")
         void propagatesExceptionWhenServiceThrowsException() {
-            RequestInfoService mockService = mock(RequestInfoService.class);
-            controller = new GetHttpController(mockService);
-
             HttpServletRequest mockRequest = mock(HttpServletRequest.class);
             Model mockModel = mock(Model.class);
 

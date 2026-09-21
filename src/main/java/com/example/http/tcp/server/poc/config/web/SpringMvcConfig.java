@@ -17,7 +17,6 @@ import org.springframework.core.io.Resource;
 import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
-import org.springframework.security.web.servlet.support.csrf.CsrfRequestDataValueProcessor;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.config.annotation.DefaultServletHandlerConfigurer;
@@ -176,18 +175,7 @@ public class SpringMvcConfig implements WebMvcConfigurer {
      */
     @Bean("requestDataValueProcessor")
     public RequestDataValueProcessor requestDataValueProcessor() {
-        return new CompositeRequestDataValueProcessor(csrfRequestDataValueProcessor(),
-                transactionTokenRequestDataValueProcessor());
-    }
-
-    /**
-     * Configure {@link CsrfRequestDataValueProcessor} bean.
-     *
-     * @return Bean of configured {@link CsrfRequestDataValueProcessor}
-     */
-    @Bean
-    public CsrfRequestDataValueProcessor csrfRequestDataValueProcessor() {
-        return new CsrfRequestDataValueProcessor();
+        return new CompositeRequestDataValueProcessor(transactionTokenRequestDataValueProcessor());
     }
 
     /**
