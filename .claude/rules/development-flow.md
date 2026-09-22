@@ -78,5 +78,5 @@ Issueとプルリクエストの本文は、以下のテンプレートに準拠
 
 - 実装サブエージェントには、Todoの内容に加えて「`.claude/rules`配下のルールに従うこと」を明示的に伝える
 - サブエージェントは呼び出しごとにコンテキストを引き継がないため、依頼時には対象ファイルパス・修正内容・修正方針を具体的に記載する
-- codexは別プロセスで動作しコンテキストを引き継がないため、レビュー観点・出力形式は`.agents`配下のファイルを読ませる形で伝える。`.claude`配下はcodexの参照対象外のため、共有すべき定義は`.agents`配下に置く
+- codexは別プロセスで動作しコンテキストを引き継がないため、`code-review`スキルを`codex exec ... '$code-review' < /dev/null`で直接起動する。`.claude`配下はcodexの参照対象外のため、レビュー観点・出力形式は`.agents/skills/code-review/SKILL.md`に一元管理する
 - レビュー・テストは詳細をチャットに返さない設計のため、メインエージェントは必要に応じて詳細ファイル（`target/code-review-result.md`、`target/test-results/mvn-test-output.log`）を自身で確認する

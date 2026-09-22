@@ -7,7 +7,7 @@ description: 未コミットのJava変更のレビューをcodex CLIのヘッド
 
 レビューを自分で実施せず、**codex CLIのヘッドレスモード（`codex exec`）に委託する**スキル。
 
-レビュー観点・指摘レベル・出力形式の実体は`.agents/skills/code-review/SKILL.md`にあり、codex側がそれを読んで判断する。本スキルにレビュー観点を重複して定義しない。
+レビュー観点・指摘レベル・出力形式の実体は`.agents/skills/code-review/SKILL.md`にあり、codexは`$code-review`記法でそれを直接読み込む。本スキルにレビュー観点を重複して定義しない。
 
 ## 事前条件の確認
 
@@ -21,17 +21,14 @@ description: 未コミットのJava変更のレビューをcodex CLIのヘッド
 1. Bashツールで次のコマンドを、**`run_in_background: true`で実行する**（レビューは10分以上かかることがあり、前面実行ではタイムアウトするため）。
 
    ```bash
-   codex exec -s read-only -o target/code-review-result.md \
-     "$(cat .claude/skills/code-review/review-prompt.txt)" < /dev/null
+   codex exec -s read-only -o target/code-review-result.md '$code-review' < /dev/null
    ```
 
-2. codexへの指示文は`review-prompt.txt`に分離してある。レビュー対象を限定する場合は、コマンドライン上でプロンプトへ対象ファイルパスを追記する（`review-prompt.txt`自体は書き換えない）。
+2. レビュー対象を限定する場合は、コマンドライン上で`$code-review`の後に対象ファイルパスを追記する。
 
    ```bash
-   codex exec -s read-only -o target/code-review-result.md \
-     "$(cat .claude/skills/code-review/review-prompt.txt)
-
-   ただし今回の対象は次のファイルに限定する: path/to/Foo.java" < /dev/null
+   codex exec -s read-only -o target/code-review-result.md '$code-review
+   ただし今回の対象は次のファイルに限定する: path/to/Foo.java' < /dev/null
    ```
 
 3. 完了後、Readツールで`target/code-review-result.md`を読み、MUST・SHOULD・WANTの件数と内容を確認する。
@@ -39,17 +36,18 @@ description: 未コミットのJava変更のレビューをcodex CLIのヘッド
 
 ## オプションの意味
 
-| オプション      | 意味                                                                                      |
-| --------------- | ----------------------------------------------------------------------------------------- |
-| `exec`          | 非対話（ヘッドレス）モード。承認プロンプトが出ず、そのまま完走する                        |
-| `-s read-only`  | codexを読み取り専用サンドボックスで動かす。レビュー中のコード改変を物理的に防ぐ           |
-| `-o <ファイル>` | codexの最終メッセージをファイルへ書き出す。`read-only`でもCLI本体が書き込むため出力できる |
+| オプション       | 意味                                                                                      |
+| ---------------- | ----------------------------------------------------------------------------------------- |
+| `exec`           | 非対話（ヘッドレス）モード。承認プロンプトが出ず、そのまま完走する                        |
+| `-s read-only`   | codexを読み取り専用サンドボックスで動かす。レビュー中のコード改変を物理的に防ぐ           |
+| `-o <ファイル>`  | codexの最終メッセージをファイルへ書き出す。`read-only`でもCLI本体が書き込むため出力できる |
+| `'$code-review'` | Skillsの`code-review`スキルを記法で読み込み、プロンプトへ展開する。シングルクォートで囲む |
 
 ## 注意事項
 
 - `codex`（サブコマンドなし）は対話TUIが起動して応答が返らないため、必ず`codex exec`を使用する。
 - **`< /dev/null`を必ず付ける**。付けない場合、codexは`Reading additional input from stdin...`と表示して追加入力を待ち続け、レビューが始まらない。
-- プロンプトを`"$(cat <<'EOS' ... EOS)"`のヒアドキュメントで直接渡さない。上記のstdin待ちを誘発するため、必ず`review-prompt.txt`から読み込む。
+- プロンプトはシングルクォートで囲む（ダブルクォートではシェルが`$code-review`を未定義変数として展開し消える）。
 - `-s read-only`を外さない。レビュー担当がコードを修正することは、いかなる場合も認めない。
 - `--dangerously-bypass-approvals-and-sandbox`は使用しない。
 - 結果ファイルは`target/`配下（gitignore対象）に出力する。リポジトリへコミットしない。
