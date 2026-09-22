@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Javaコードの変更をこのプロジェクト固有の8観点でレビューし、MUST・SHOULD・WANTに分類する。コードレビュー、実装後のセルフチェック、未コミット変更の規約適合性確認を依頼されたときに使用する。
+description: Javaコードの変更をこのプロジェクト固有の10観点でレビューし、MUST・SHOULD・WANTに分類する。コードレビュー、実装後のセルフチェック、未コミット変更の規約適合性確認を依頼されたときに使用する。
 ---
 
 # コードレビュー
@@ -17,7 +17,9 @@ description: Javaコードの変更をこのプロジェクト固有の8観点�
    - `.agents/rules/lambda.md`
    - `.agents/rules/concurrency.md`
    - `.agents/rules/comment.md`
-3. 次の8観点で、具体的なファイルパス・行番号・根拠を確認する。
+   - `.agents/rules/error-handling.md`
+   - `.agents/rules/testing.md`
+3. 次の10観点で、具体的なファイルパス・行番号・根拠を確認する。
    - 誤字脱字
    - 命名規則とレイヤードパッケージ構成
    - Javadoc（`src/test`配下は対象外）
@@ -26,11 +28,32 @@ description: Javaコードの変更をこのプロジェクト固有の8観点�
    - スレッドセーフ性
    - 非自明な実装理由のコメント
    - コメントが「なぜ」を説明していること
+   - 例外処理（チェック例外のtry-catch、try-with-resources、スタックトレース出力）
+   - テストコードの規約（`@Nested`でのグルーピング、Given-When-Then形式の`@DisplayName`、正常系と異常系の網羅、テストの独立性）
 4. 指摘を次の基準で分類する。
-   - MUST: 明確な規約違反またはビルド・Checkstyleに影響する問題
+   - MUST: `.agents/rules`配下の規約に対する明確な違反
    - SHOULD: 可読性・保守性のために修正を推奨する問題
    - WANT: 任意の改善提案
 5. チャットではMUSTを優先して報告する。指摘がなければ、その事実を明記する。
+
+## レビュー対象外
+
+次の形式面は Checkstyle（`mvn checkstyle:check`）が機械的に検証するため、レビューでは一切指摘しない。
+
+- 行長（`LineLength`）
+- インデント・空白・改行位置
+- import文の順序、未使用import
+- 波括弧の位置、修飾子の順序
+
+日本語はUTF-8で1文字3バイトとなるため、バイト数で行長を判定すると実際には違反していない行を誤って指摘してしまう。Checkstyleは文字数で判定するため、判定は機械チェックに委ねる。
+
+同様に、コンパイルの成否（型の不一致、未定義シンボルなど）もビルドが検証するため、レビューでは指摘しない。
+
+また`src/test`配下は`.agents/rules/testing.md`が優先される。同ファイルで定められた次の形式は、他の規約に反して見えても指摘しない。
+
+- `@Nested`の内部クラス名が日本語であること（`正常系`、`異常系`、`Exception`など）
+- `@DisplayName`が日本語のGiven-When-Then形式であること
+- テストクラス・テストメソッドにJavadocが無いこと
 
 ## 出力形式
 
