@@ -35,7 +35,7 @@ flowchart TD
 | 2 | 作業ブランチ作成 | メインエージェント | `git switch main && git pull`で最新化した上で、`git switch -c <ブランチ名>`により作業ブランチを作成する。ブランチ名は後述の命名規則に従う |
 | 3 | 方針のTodo化 | メインエージェント | `create-todo`スキルを使用し、実装方針を作業工程単位のTodoリストに分解して`.claude/todo/issue-{Issue番号}.md`に出力する。この時点で`.claude/rules`配下の各ルールを満たす方針になっているかを確認する |
 | 4 | 実装 | `implementer`サブエージェント | Todoに記載された方針のみを実装する。方針外の追加実装・リファクタリングはしない。完了した項目はTodoファイルのチェックボックスを`- [x]`に更新する。メインエージェントは呼び出し時に**Todoファイルのパスを必ず伝える** |
-| 5 | コードレビュー | メインエージェント<br>（codex CLI） | `code-review`スキルを使用し、`codex exec`（ヘッドレスモード）にレビューを委託する。codexは未コミットの変更をプロジェクト独自の8観点でレビューし、MUST/SHOULD/WANTに分類した全指摘を`target/code-review-result.md`へ出力する。メインエージェントは同ファイルを読んでMUSTの有無を判断する。codexは`-s read-only`で起動するため修正は行わない |
+| 5 | コードレビュー | メインエージェント<br>（codex CLI） | `code-review`スキルを使用し、`codex exec`（ヘッドレスモード）にレビューを委託する。codexは未コミットの変更をプロジェクト独自の10観点でレビューし、MUST/SHOULD/WANTに分類した全指摘を`target/code-review-result.md`へ出力する。メインエージェントは同ファイルを読んでMUSTの有無を判断する。codexは`-s read-only`で起動するため修正は行わない |
 | 6 | 指摘の修正 | メイン → `implementer` | **MUST**の指摘は必ず修正する。指摘内容と修正方針を未チェック項目としてTodoファイルに追記し、`implementer`に修正を依頼する。修正後は必ず#5のレビューからやり直す。SHOULD/WANTは修正せず、#10の完了通知でユーザーに提示して判断を仰ぐ |
 | 7 | テスト実行 | `test-runner`サブエージェント | `mvn test`を実行し、JUnitの件数サマリーとCheckstyle違反件数のみを返す |
 | 8 | テストNGの修正 | メイン → `implementer` | 詳細ログ（`target/test-results/mvn-test-output.log`）を確認して原因を特定し、未チェック項目としてTodoファイルに追記して`implementer`に修正を依頼する。修正後は#5のレビューからやり直す |
