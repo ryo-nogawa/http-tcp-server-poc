@@ -137,6 +137,15 @@ class FieldTypeTest {
                     FieldType.BCD.encode(value, 2);
                 });
             }
+
+            @Test
+            @DisplayName("Given: 非数字文字を含む文字列が与えられたとき, When: BCD型でエンコードすると, Then: TcpMessageFormatExceptionがスローされる")
+            void encodeThrowsExceptionForNonNumericString() {
+                String value = "12AB";
+                assertThrows(TcpMessageFormatException.class, () -> {
+                    FieldType.BCD.encode(value, 2);
+                });
+            }
         }
     }
 

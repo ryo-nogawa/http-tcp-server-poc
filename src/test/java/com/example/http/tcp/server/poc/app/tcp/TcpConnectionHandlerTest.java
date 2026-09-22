@@ -5,7 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import org.mockito.ArgumentCaptor;
 
 import com.example.http.tcp.server.poc.domain.model.tcp.MessageType;
 import com.example.http.tcp.server.poc.domain.model.tcp.RequestField;
@@ -66,7 +69,7 @@ class TcpConnectionHandlerTest {
             byte[] responseBytes = new byte[53];
             when(mockCodec.encodeResponse(response)).thenReturn(responseBytes);
 
-            handler.handle(socket, 5000);
+            handler.handle(socket);
 
             assertEquals(53, output.toByteArray().length);
         }
@@ -87,7 +90,7 @@ class TcpConnectionHandlerTest {
             when(socket.getInputStream()).thenReturn(input);
             when(socket.getOutputStream()).thenReturn(output);
 
-            handler.handle(socket, 5000);
+            handler.handle(socket);
 
             assertEquals(0, output.toByteArray().length);
         }
@@ -110,8 +113,13 @@ class TcpConnectionHandlerTest {
             when(mockCodec.encodeResponse(any()))
                     .thenReturn(errorResponse);
 
-            handler.handle(socket, 5000);
+            handler.handle(socket);
 
+            ArgumentCaptor<TcpResponse> captor = ArgumentCaptor
+                    .forClass(TcpResponse.class);
+            verify(mockCodec).encodeResponse(captor.capture());
+            assertEquals(ReturnCode.INVALID_MESSAGE,
+                    captor.getValue().getReturnCode());
             assertEquals(53, output.toByteArray().length);
         }
 
@@ -138,8 +146,13 @@ class TcpConnectionHandlerTest {
             when(mockCodec.encodeResponse(any()))
                     .thenReturn(errorResponse);
 
-            handler.handle(socket, 5000);
+            handler.handle(socket);
 
+            ArgumentCaptor<TcpResponse> captor = ArgumentCaptor
+                    .forClass(TcpResponse.class);
+            verify(mockCodec).encodeResponse(captor.capture());
+            assertEquals(ReturnCode.UNDEFINED_MESSAGE_TYPE,
+                    captor.getValue().getReturnCode());
             assertEquals(53, output.toByteArray().length);
         }
     }
@@ -155,7 +168,8 @@ class TcpConnectionHandlerTest {
             doThrow(new SocketTimeoutException("Socket timeout"))
                     .when(socket).getInputStream();
 
-            assertDoesNotThrow(() -> handler.handle(socket, 5000));
+            assertDoesNotThrow(() -> handler.handle(socket));
+            verify(socket).close();
         }
 
         @Test
@@ -165,7 +179,8 @@ class TcpConnectionHandlerTest {
             doThrow(new IOException("Connection reset")).when(socket)
                     .getInputStream();
 
-            assertDoesNotThrow(() -> handler.handle(socket, 5000));
+            assertDoesNotThrow(() -> handler.handle(socket));
+            verify(socket).close();
         }
     }
 

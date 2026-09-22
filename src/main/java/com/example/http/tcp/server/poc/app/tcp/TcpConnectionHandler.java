@@ -43,9 +43,8 @@ public class TcpConnectionHandler {
      * 電文の受信・処理・応答を行う。
      *
      * @param socket クライアントのソケット
-     * @param timeoutMillis ソケットのタイムアウト時間（ミリ秒）
      */
-    public void handle(Socket socket, long timeoutMillis) {
+    public void handle(Socket socket) {
         try (socket) {
             InputStream input = socket.getInputStream();
             OutputStream output = socket.getOutputStream();

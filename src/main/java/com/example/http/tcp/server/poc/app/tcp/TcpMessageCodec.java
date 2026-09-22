@@ -31,6 +31,7 @@ public class TcpMessageCodec {
             String dataLengthStr = RequestField.DATA_LENGTH.extract(header);
             return Integer.parseInt(dataLengthStr.trim());
         } catch (NumberFormatException e) {
+            e.printStackTrace();
             throw new TcpMessageFormatException(
                     "Failed to parse data length", e);
         }

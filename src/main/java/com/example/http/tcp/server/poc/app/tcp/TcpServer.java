@@ -21,7 +21,7 @@ public class TcpServer implements InitializingBean, DisposableBean {
 
     private final int port;
     private final int threadPoolSize;
-    private final long socketTimeoutMillis;
+    private final int socketTimeoutMillis;
     private final TcpConnectionHandler connectionHandler;
 
     private ServerSocket serverSocket;
@@ -43,7 +43,7 @@ public class TcpServer implements InitializingBean, DisposableBean {
     public TcpServer(
             @Value("${tcp.server.port}") int port,
             @Value("${tcp.server.threadPoolSize}") int threadPoolSize,
-            @Value("${tcp.server.socketTimeoutMillis}") long socketTimeoutMillis,
+            @Value("${tcp.server.socketTimeoutMillis}") int socketTimeoutMillis,
             TcpConnectionHandler connectionHandler) {
         this.port = port;
         this.threadPoolSize = threadPoolSize;
@@ -76,9 +76,8 @@ public class TcpServer implements InitializingBean, DisposableBean {
             while (running) {
                 try {
                     var socket = serverSocket.accept();
-                    socket.setSoTimeout((int) socketTimeoutMillis);
-                    workerExecutor.submit(() -> connectionHandler.handle(socket,
-                            socketTimeoutMillis));
+                    socket.setSoTimeout(socketTimeoutMillis);
+                    workerExecutor.submit(() -> connectionHandler.handle(socket));
                 } catch (IOException e) {
                     // 停止時のServerSocket#close()によりaccept()がIOExceptionで抜ける
                     // のは正常な停止処理の一部であるため、稼働フラグで判断して

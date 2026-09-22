@@ -108,19 +108,25 @@ public enum FieldType {
                 throw new TcpMessageFormatException(
                         "BCD encoding error: value length exceeds field capacity");
             }
-            String paddedValue = String.format("%0" + expectedLength + "d",
-                    Long.parseLong(value));
-            byte[] result = new byte[length];
-            for (int i = 0; i < length; i++) {
-                int upper = Character.digit(paddedValue.charAt(i * 2), 10);
-                int lower = Character.digit(paddedValue.charAt(i * 2 + 1), 10);
-                if (upper < 0 || lower < 0) {
-                    throw new TcpMessageFormatException(
-                            "BCD encoding error: non-digit character found");
+            try {
+                String paddedValue = String.format("%0" + expectedLength + "d",
+                        Long.parseLong(value));
+                byte[] result = new byte[length];
+                for (int i = 0; i < length; i++) {
+                    int upper = Character.digit(paddedValue.charAt(i * 2), 10);
+                    int lower = Character.digit(paddedValue.charAt(i * 2 + 1), 10);
+                    if (upper < 0 || lower < 0) {
+                        throw new TcpMessageFormatException(
+                                "BCD encoding error: non-digit character found");
+                    }
+                    result[i] = (byte) ((upper << 4) | lower);
                 }
-                result[i] = (byte) ((upper << 4) | lower);
+                return result;
+            } catch (NumberFormatException e) {
+                e.printStackTrace();
+                throw new TcpMessageFormatException(
+                        "BCD encoding error: value is not a valid number", e);
             }
-            return result;
         }
     },
 
@@ -185,6 +191,7 @@ public enum FieldType {
                 }
                 return result;
             } catch (NumberFormatException e) {
+                e.printStackTrace();
                 throw new TcpMessageFormatException(
                         "HEX encoding error: value is not a valid integer", e);
             }
