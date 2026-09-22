@@ -11,6 +11,7 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.util.Map;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -52,13 +53,6 @@ class TcpSocketIntegrationTest {
 
     @AfterAll
     void tearDownAll() {
-        if (socket != null) {
-            try {
-                socket.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
         if (applicationContext != null) {
             applicationContext.close();
         }
@@ -67,6 +61,17 @@ class TcpSocketIntegrationTest {
     @BeforeEach
     void setUp() throws IOException {
         socket = new Socket("localhost", port);
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (socket != null) {
+            try {
+                socket.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     @Nested

@@ -56,12 +56,16 @@ public class TcpServer implements InitializingBean, DisposableBean {
      *
      * <p>{@code ServerSocket}を生成し、accept用スレッドで受け入れループを開始する。
      * Spring の {@link InitializingBean} インタフェース実装により自動呼び出される。
-     *
-     * @throws Exception サーバーソケット生成時の例外
      */
     @Override
-    public void afterPropertiesSet() throws Exception {
-        serverSocket = new ServerSocket(port);
+    public void afterPropertiesSet() {
+        try {
+            serverSocket = new ServerSocket(port);
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new IllegalStateException(
+                    "Failed to create ServerSocket on port " + port, e);
+        }
         running = true;
         acceptExecutor = Executors.newSingleThreadExecutor();
         workerExecutor = Executors.newFixedThreadPool(threadPoolSize);
@@ -92,11 +96,9 @@ public class TcpServer implements InitializingBean, DisposableBean {
      *
      * <p>{@code ServerSocket}をクローズし、スレッドプールをシャットダウンする。
      * Spring の {@link DisposableBean} インタフェース実装により自動呼び出される。
-     *
-     * @throws Exception 例外
      */
     @Override
-    public void destroy() throws Exception {
+    public void destroy() {
         running = false;
         try {
             if (serverSocket != null && !serverSocket.isClosed()) {
