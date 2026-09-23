@@ -19,8 +19,10 @@ http://localhost:8080/http-tcp-server-poc/
 TCP電文処理フロー可視化ページは、WARデプロイ後に以下のURLでアクセスできます。カード照会・決済・エラーケース・タイムアウトの5つのシナリオを通じて、TCP受信・デコード・業務処理・応答エンコード・送信の全フローを段階的に可視化できます。
 
 ```
-http://localhost:8080/http-tcp-server-poc/resources/app/tcp-visualizer/index.html
+http://localhost:8080/http-tcp-server-poc/tcp-visualizer
 ```
+
+従来の静的URL（`http://localhost:8080/http-tcp-server-poc/resources/app/tcp-visualizer/index.html`）でも開けます。
 
 ## プロジェクト構成
 
