@@ -16,6 +16,12 @@ http://localhost:8080/http-tcp-server-poc/
 
 > **TODO**: この画面は開発初期段階の暫定実装（TERASOLUNAブランクプロジェクトのWelcome画面）です。今後、本来の目的であるHTTP/TCP Socket判別機能を実装する過程で削除される予定です。
 
+TCP電文処理フロー可視化ページは、WARデプロイ後に以下のURLでアクセスできます。カード照会・決済・エラーケース・タイムアウトの5つのシナリオを通じて、TCP受信・デコード・業務処理・応答エンコード・送信の全フローを段階的に可視化できます。
+
+```
+http://localhost:8080/http-tcp-server-poc/resources/app/tcp-visualizer/index.html
+```
+
 ## プロジェクト構成
 
 `src/main/java` 以下は、以下の親パッケージで構成されています（配下の詳細な構成は今後変更される可能性があるため、ここでは役割のみ記載します）。

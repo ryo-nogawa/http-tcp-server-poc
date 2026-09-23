@@ -1,0 +1,2318 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TCP電文処理フロー可視化</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        height: 90vh;
+      }
+
+      .header {
+        padding: 20px;
+        border-bottom: 2px solid #e5e7eb;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+      }
+
+      .header h1 {
+        font-size: 24px;
+        margin-bottom: 10px;
+      }
+
+      .scenario-tabs {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .scenario-tab {
+        padding: 8px 16px;
+        background: rgba(255, 255, 255, 0.2);
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.3s ease;
+      }
+
+      .scenario-tab:hover {
+        background: rgba(255, 255, 255, 0.3);
+        border-color: rgba(255, 255, 255, 0.5);
+      }
+
+      .scenario-tab.active {
+        background: white;
+        color: #667eea;
+        font-weight: bold;
+        border-color: white;
+      }
+
+      .main-content {
+        flex: 1;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 16px;
+        padding: 20px;
+        overflow: hidden;
+      }
+
+      @media (max-width: 900px) {
+        .main-content {
+          grid-template-columns: 1fr;
+          grid-template-rows: auto auto auto;
+        }
+      }
+
+      .pane {
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        background: #f9fafb;
+        overflow: auto;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .pane-title {
+        font-weight: bold;
+        font-size: 14px;
+        color: #374151;
+        margin-bottom: 12px;
+        border-bottom: 2px solid #e5e7eb;
+        padding-bottom: 8px;
+      }
+
+      /* Sequence Diagram Pane */
+      .sequence-diagram {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .node {
+        padding: 12px;
+        background: white;
+        border: 2px solid #d1d5db;
+        border-radius: 4px;
+        font-size: 12px;
+        color: #6b7280;
+        text-align: center;
+        min-height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        word-break: break-word;
+        transition: all 0.2s ease;
+        position: relative;
+      }
+
+      .node:not(:last-child)::after {
+        content: "↓";
+        position: absolute;
+        bottom: -22px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: #9ca3af;
+        font-size: 14px;
+      }
+
+      .node.active {
+        border-width: 3px;
+        border-color: #667eea;
+        background: #ede9fe;
+        font-weight: bold;
+        color: #4f46e5;
+        box-shadow: 0 0 8px rgba(102, 126, 234, 0.3);
+      }
+
+      .node.visited {
+        background: #f3f4f6;
+        color: #9ca3af;
+        border-color: #d1d5db;
+      }
+
+      .node.error {
+        border-color: #dc2626;
+        background: #fee2e2;
+        color: #dc2626;
+        font-weight: bold;
+        box-shadow: 0 0 8px rgba(220, 38, 38, 0.3);
+      }
+
+      /* Byte View Pane */
+      .byte-view {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .byte-section {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .byte-section-title {
+        font-weight: bold;
+        font-size: 12px;
+        color: #6b7280;
+      }
+
+      .byte-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(45px, 1fr));
+        gap: 4px;
+        background: white;
+        padding: 8px;
+        border-radius: 4px;
+        border: 1px solid #e5e7eb;
+      }
+
+      .byte-cell {
+        background: #e5e7eb;
+        border: 1px solid #d1d5db;
+        padding: 6px;
+        text-align: center;
+        font-size: 10px;
+        font-family: monospace;
+        border-radius: 3px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 50px;
+        cursor: help;
+        transition: all 0.2s ease;
+      }
+
+      .byte-cell.data-length {
+        background: #2563eb;
+        color: white;
+      }
+      .byte-cell.message-type {
+        background: #7c3aed;
+        color: white;
+      }
+      .byte-cell.card-number {
+        background: #0891b2;
+        color: white;
+      }
+      .byte-cell.amount {
+        background: #d97706;
+        color: white;
+      }
+      .byte-cell.return-code {
+        background: #16a34a;
+        color: white;
+      }
+      .byte-cell.message {
+        background: #0f766e;
+        color: white;
+      }
+
+      .byte-cell.active {
+        outline: 3px solid #667eea;
+        outline-offset: 2px;
+        box-shadow: 0 0 8px rgba(102, 126, 234, 0.4);
+        font-weight: bold;
+      }
+
+      .byte-cell.error {
+        background: #dc2626 !important;
+        color: white;
+        font-weight: bold;
+      }
+
+      .byte-offset {
+        font-size: 8px;
+        opacity: 0.8;
+      }
+      .byte-hex {
+        font-weight: bold;
+        font-size: 11px;
+      }
+      .byte-ascii {
+        font-size: 9px;
+        opacity: 0.9;
+        margin-top: 2px;
+      }
+
+      .decode-detail {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 4px;
+        padding: 10px;
+        font-size: 11px;
+        color: #374151;
+      }
+
+      .decode-detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 4px 0;
+        font-family: monospace;
+      }
+
+      .decode-detail-label {
+        font-weight: bold;
+        color: #6b7280;
+      }
+
+      /* Explanation Pane */
+      .explanation {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .explanation-section {
+        border-bottom: 1px solid #e5e7eb;
+        padding-bottom: 8px;
+      }
+
+      .explanation-section:last-child {
+        border-bottom: none;
+      }
+
+      .explanation-title {
+        font-weight: bold;
+        color: #111827;
+        font-size: 13px;
+        margin-bottom: 4px;
+      }
+
+      .explanation-step-no {
+        font-size: 11px;
+        color: #6b7280;
+      }
+
+      .explanation-method {
+        font-family: monospace;
+        font-size: 10px;
+        background: #f3f4f6;
+        padding: 4px 6px;
+        border-radius: 3px;
+        color: #1f2937;
+        margin: 4px 0;
+        word-break: break-word;
+      }
+
+      .explanation-code {
+        background: #1f2937;
+        color: #d1d5db;
+        padding: 8px;
+        border-radius: 3px;
+        font-family: "Courier New", monospace;
+        font-size: 9px;
+        overflow: auto;
+        margin: 4px 0;
+        max-height: 80px;
+        border-left: 3px solid #667eea;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      .explanation-why {
+        font-size: 11px;
+        color: #374151;
+        line-height: 1.4;
+        font-style: italic;
+        padding: 4px;
+        border-left: 3px solid #fbbf24;
+        padding-left: 8px;
+      }
+
+      .explanation-note {
+        font-size: 10px;
+        color: #7c3aed;
+        background: #f3e8ff;
+        padding: 6px;
+        border-radius: 3px;
+        margin-top: 4px;
+      }
+
+      /* Control Bar */
+      .control-bar {
+        padding: 16px 20px;
+        border-top: 2px solid #e5e7eb;
+        background: #f9fafb;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .control-group {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .control-group-label {
+        font-size: 12px;
+        font-weight: bold;
+        color: #6b7280;
+      }
+
+      .slider {
+        width: 150px;
+        height: 4px;
+        border-radius: 2px;
+        background: #d1d5db;
+        outline: none;
+        -webkit-appearance: none;
+        appearance: none;
+      }
+
+      .slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #667eea;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .slider::-webkit-slider-thumb:hover {
+        background: #4f46e5;
+        transform: scale(1.2);
+      }
+
+      .slider::-moz-range-thumb {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #667eea;
+        cursor: pointer;
+        border: none;
+        transition: all 0.2s ease;
+      }
+
+      .slider::-moz-range-thumb:hover {
+        background: #4f46e5;
+        transform: scale(1.2);
+      }
+
+      .control-button {
+        padding: 6px 12px;
+        background: #667eea;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: bold;
+        transition: all 0.2s ease;
+      }
+
+      .control-button:hover {
+        background: #4f46e5;
+        transform: scale(1.05);
+      }
+
+      .control-button:active {
+        transform: scale(0.95);
+      }
+
+      .speed-button {
+        padding: 4px 8px;
+        background: #e5e7eb;
+        color: #374151;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 11px;
+        transition: all 0.2s ease;
+      }
+
+      .speed-button.active {
+        background: #667eea;
+        color: white;
+        border-color: #667eea;
+      }
+
+      .speed-button:hover {
+        border-color: #667eea;
+      }
+
+      .step-display {
+        font-family: monospace;
+        font-weight: bold;
+        color: #374151;
+        font-size: 13px;
+        min-width: 50px;
+        text-align: center;
+      }
+
+      .help-text {
+        font-size: 10px;
+        color: #9ca3af;
+        margin-left: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>TCP電文処理フロー可視化</h1>
+        <div class="scenario-tabs" id="scenarioTabs"></div>
+      </div>
+
+      <div class="main-content">
+        <div class="pane">
+          <div class="pane-title">シーケンス図</div>
+          <div class="sequence-diagram" id="sequenceDiagram"></div>
+        </div>
+
+        <div class="pane">
+          <div class="pane-title">電文バイトビュー</div>
+          <div class="byte-view" id="byteView"></div>
+        </div>
+
+        <div class="pane">
+          <div class="pane-title">解説パネル</div>
+          <div class="explanation" id="explanationPanel"></div>
+        </div>
+      </div>
+
+      <div class="control-bar">
+        <div class="control-group">
+          <label class="control-group-label">ステップ:</label>
+          <input
+            type="range"
+            id="stepSlider"
+            class="slider"
+            min="0"
+            max="13"
+            value="0"
+          />
+        </div>
+
+        <div class="control-group">
+          <button id="playButton" class="control-button">▶ 再生</button>
+          <button id="pauseButton" class="control-button" style="display: none">
+            ⏸ 一時停止
+          </button>
+        </div>
+
+        <div class="control-group">
+          <label class="control-group-label">速度:</label>
+          <button class="speed-button active" data-speed="0.5">x0.5</button>
+          <button class="speed-button" data-speed="1">x1</button>
+          <button class="speed-button" data-speed="2">x2</button>
+        </div>
+
+        <div class="step-display">
+          <span id="stepDisplay">1 / 14</span>
+        </div>
+
+        <div class="help-text">⬅️ ➡️ コマ送り | SPACE 再生/一時停止</div>
+      </div>
+    </div>
+
+    <script>
+      // Node definitions
+      const NODES = [
+        "対向先サーバー",
+        "TcpServer（初期化）",
+        "TcpServer（acceptスレッド）",
+        "TcpServer（workerスレッド）",
+        "TcpConnectionHandler",
+        "TcpMessageCodec",
+        "RequestField / FieldType",
+        "MessageType",
+        "TcpDispatcher",
+        "CardInquiryTcpController / PaymentTcpController",
+        "CardInquiryServiceImpl / PaymentServiceImpl",
+        "ResponseField",
+      ];
+
+      // Scenario definitions with exact data from Todo
+      const SCENARIOS = [
+        {
+          id: "scenario1",
+          label: "0100 カード照会",
+          requestBytes: [
+            0x30, 0x30, 0x31, 0x34, 0x01, 0x00, 0x12, 0x34, 0x56, 0x78, 0x90,
+            0x12, 0x34, 0x56, 0x00, 0x00, 0x00, 0x00,
+          ],
+          responseBytes: [
+            0x30, 0x30, 0x34, 0x39, 0x01, 0x00, 0x00, 0x43, 0x41, 0x52, 0x44,
+            0x20, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x2a, 0x2a, 0x2a, 0x2a,
+            0x2a, 0x2a, 0x33, 0x34, 0x35, 0x36, 0x20, 0x56, 0x41, 0x4c, 0x49,
+            0x44, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
+            0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
+          ],
+          steps: [
+            {
+              no: 1,
+              title: "ポートをバインドして受け入れ開始",
+              className: "TcpServer",
+              methodName: "afterPropertiesSet()",
+              code: "serverSocket = new ServerSocket(port);",
+              why: "InitializingBean実装によりDIの完了直後にSpringが自動呼び出しするため、インジェクション完了後に確実に初期化できる。ポート番号は application.properties の tcp.server.port=8081 を @Value で注入",
+              activeNodes: ["TcpServer（初期化）"],
+              requestRange: null,
+              responseRange: null,
+              decodeDetail: null,
+            },
+            {
+              no: 2,
+              title: "接続を受け入れ、タイムアウトを設定",
+              className: "TcpServer",
+              methodName: "afterPropertiesSet()",
+              code: "var socket = serverSocket.accept();\nsocket.setSoTimeout(socketTimeoutMillis);",
+              why: "accept() がブロッキングするため単一スレッドのacceptExecutorに分離している。tcp.server.socketTimeoutMillis=30000で無通信時の滞留を防ぐ",
+              activeNodes: ["対向先サーバー", "TcpServer（acceptスレッド）"],
+              requestRange: [0, 3],
+              responseRange: null,
+              decodeDetail: {
+                type: "TXT",
+                value: "0014",
+                rows: [
+                  { label: "バイト値", value: "30 30 31 34" },
+                  { label: "属性", value: "US-ASCII" },
+                  { label: "デコード", value: '"0014"' },
+                ],
+              },
+            },
+            {
+              no: 3,
+              title: "ワーカースレッドへ処理を委譲",
+              className: "TcpServer",
+              methodName: "afterPropertiesSet()",
+              callee: "TcpConnectionHandler#handle()",
+              code: "workerExecutor.submit(() -> connectionHandler.handle(socket));",
+              why: "接続処理を固定プール（tcp.server.threadPoolSize=10）で並行実行し、受け入れが滞らないようにするため。このコードは acceptExecutor に渡したラムダ内で実行される",
+              activeNodes: [
+                "TcpServer（acceptスレッド）",
+                "TcpConnectionHandler",
+              ],
+              requestRange: [0, 3],
+              responseRange: null,
+              decodeDetail: null,
+            },
+            {
+              no: 4,
+              title: "ヘッダ4バイトを読み切る",
+              className: "TcpConnectionHandler",
+              methodName: "handle()",
+              code: "int bytesRead = readFully(input, header, 4);\nif (bytesRead < 4) { return; }",
+              callee: "TcpConnectionHandler#readFully()",
+              why: "1回の read() で全量が届かない場合があるため、複数回読み込んで4バイトを読み切る。4バイト未満のまま切断された場合は応答せずクローズ",
+              activeNodes: ["TcpConnectionHandler"],
+              requestRange: [0, 3],
+              responseRange: null,
+              decodeDetail: {
+                type: "TXT",
+                value: "0014",
+                rows: [
+                  { label: "バイト値", value: "30 30 31 34" },
+                  { label: "属性", value: "US-ASCII" },
+                  { label: "デコード", value: '"0014"' },
+                ],
+              },
+            },
+            {
+              no: 5,
+              title: "データ長をデコード",
+              className: "TcpMessageCodec",
+              methodName: "decodeDataLength()",
+              code: "String dataLengthStr = RequestField.DATA_LENGTH.extract(header);\nreturn Integer.parseInt(dataLengthStr.trim());",
+              why: "データ長はTXT属性のため、US-ASCII文字列へデコードしてから数値化する。数値化できない場合は TcpMessageFormatException をスロー",
+              activeNodes: ["TcpMessageCodec", "RequestField / FieldType"],
+              requestRange: [0, 3],
+              responseRange: null,
+              decodeDetail: {
+                type: "TXT",
+                value: "0014",
+                rows: [
+                  { label: "フィールド", value: "DATA_LENGTH" },
+                  { label: "バイト値", value: "30 30 31 34" },
+                  { label: "US-ASCII", value: '"0014"' },
+                  { label: "数値化", value: "14" },
+                ],
+              },
+            },
+            {
+              no: 6,
+              title: "データ長を検証（期待値14）",
+              className: "TcpConnectionHandler",
+              methodName: "handle()",
+              code: "if (dataLength != RequestField.totalLength() - 4) {\n    throw new TcpMessageFormatException(...);\n}",
+              why: "固定長プロトコルのため、不正なデータ長で本体読み込みがタイムアウトまでブロックしたり、負値で NegativeArraySizeException が発生するのを防ぐ",
+              activeNodes: ["TcpConnectionHandler"],
+              requestRange: null,
+              responseRange: null,
+              decodeDetail: {
+                type: "VALIDATE",
+                value: "14 == 18 - 4 ? OK",
+                rows: [
+                  { label: "実際のデータ長", value: "14" },
+                  { label: "期待値", value: "14 (18 - 4)" },
+                  { label: "検証結果", value: "正常" },
+                ],
+              },
+            },
+            {
+              no: 7,
+              title: "本体14バイトを読み切る",
+              className: "TcpConnectionHandler",
+              methodName: "handle()",
+              code: "byte[] body = new byte[dataLength];\nbytesRead = readFully(input, body, dataLength);",
+              callee: "TcpConnectionHandler#readFully()",
+              why: "ヘッダで確定したデータ長ぶんだけ読み込む。不足のまま切断された場合は応答せずクローズ",
+              activeNodes: ["TcpConnectionHandler"],
+              requestRange: [4, 17],
+              responseRange: null,
+              decodeDetail: {
+                type: "BYTES",
+                value: "リクエスト本体14バイト",
+                rows: [
+                  { label: "オフセット", value: "4〜17" },
+                  { label: "バイト数", value: "14" },
+                  {
+                    label: "内容",
+                    value: "MESSAGE_TYPE(2) + CARD_NUMBER(8) + AMOUNT(4)",
+                  },
+                ],
+              },
+            },
+            {
+              no: 8,
+              title: "ヘッダと本体を18バイトへ結合",
+              className: "TcpConnectionHandler",
+              methodName: "handle()",
+              code: "System.arraycopy(header, 0, message, 0, 4);\nSystem.arraycopy(body, 0, message, 4, dataLength);",
+              why: "後続の decodeRequest() が電文全体（18バイト）を前提にオフセットで各フィールドを切り出すため",
+              activeNodes: ["TcpConnectionHandler"],
+              requestRange: [0, 17],
+              responseRange: null,
+              decodeDetail: {
+                type: "COMBINE",
+                value: "4 + 14 = 18バイト",
+                rows: [
+                  { label: "ヘッダ", value: "0〜3 (4バイト)" },
+                  { label: "本体", value: "4〜17 (14バイト)" },
+                  { label: "合計", value: "18バイト" },
+                ],
+              },
+            },
+            {
+              no: 9,
+              title: "3フィールドを抽出しTcpRequestを生成",
+              className: "TcpMessageCodec",
+              methodName: "decodeRequest()",
+              code: "String messageType = RequestField.MESSAGE_TYPE.extract(message);\nString cardNumber = RequestField.CARD_NUMBER.extract(message);\nString amount = RequestField.AMOUNT.extract(message);",
+              why: "各フィールドがオフセット・長さ・属性を自身で持つため、電文レイアウトの知識を RequestField へ集約できる",
+              activeNodes: ["TcpMessageCodec", "RequestField / FieldType"],
+              requestRange: [0, 17],
+              responseRange: null,
+              decodeDetail: {
+                type: "DECODE",
+                value: "3フィールドを抽出",
+                rows: [
+                  {
+                    label: "MESSAGE_TYPE",
+                    value: 'オフセット4-5 (BCD) → "0100"',
+                  },
+                  {
+                    label: "CARD_NUMBER",
+                    value: 'オフセット6-13 (BCD) → "1234567890123456"',
+                  },
+                  { label: "AMOUNT", value: 'オフセット14-17 (HEX) → "0"' },
+                ],
+              },
+            },
+            {
+              no: 10,
+              title: "コード値から電文種別を解決",
+              className: "TcpConnectionHandler",
+              methodName: "handle()",
+              callee: "MessageType#fromCode()",
+              code: "MessageType messageType = MessageType.fromCode(request.getMessageType()).orElse(null);",
+              why: "未定義のコード値を Optional.empty() で表現し、null判定でリターンコード91の応答へ分岐させるため",
+              activeNodes: ["TcpConnectionHandler", "MessageType"],
+              requestRange: [4, 5],
+              responseRange: null,
+              decodeDetail: {
+                type: "BCD",
+                value: "0100",
+                rows: [
+                  { label: "バイト値", value: "01 00" },
+                  {
+                    label: "BCD展開",
+                    value: "upper=0 lower=1, upper=0 lower=0",
+                  },
+                  { label: "デコード", value: '"0100"' },
+                  { label: "MessageType", value: "CARD_INQUIRY" },
+                ],
+              },
+            },
+            {
+              no: 11,
+              title: "電文振り分け：種別からコントローラを解決",
+              className: "TcpConnectionHandler",
+              methodName: "handle()",
+              code: "TcpController controller = dispatcher.resolve(messageType);",
+              callee: "TcpDispatcher#resolve()",
+              why: "起動時に List<TcpController> から ConcurrentHashMap を構築済み。複数の接続スレッドから同時参照されるためスレッドセーフな実装が必要",
+              activeNodes: ["TcpConnectionHandler", "TcpDispatcher"],
+              requestRange: [4, 5],
+              responseRange: null,
+              decodeDetail: {
+                type: "RESOLVE",
+                value: "種別 → コントローラ",
+                rows: [
+                  { label: "電文種別", value: '"0100"' },
+                  { label: "対応クラス", value: "CardInquiryTcpController" },
+                ],
+              },
+            },
+            {
+              no: 12,
+              title: "業務処理を実行",
+              className: "CardInquiryTcpController",
+              methodName: "handle()",
+              code: "String message = cardInquiryService.inquire(cardNumber);\nreturn new TcpResponse(request.getMessageType(), ReturnCode.SUCCESS, message);",
+              why: "カード番号の上位6桁と下位4桁を残し中間6桁を ****** でマスクする。結果は CARD 123456******3456 VALID",
+              activeNodes: [
+                "CardInquiryTcpController / PaymentTcpController",
+                "CardInquiryServiceImpl / PaymentServiceImpl",
+              ],
+              requestRange: [6, 13],
+              responseRange: null,
+              decodeDetail: {
+                type: "BCD",
+                value: "1234567890123456",
+                rows: [
+                  { label: "バイト値", value: "12 34 56 78 90 12 34 56" },
+                  { label: "BCD展開", value: "各バイト→2桁数字" },
+                  { label: "デコード", value: '"1234567890123456"' },
+                  { label: "マスク処理", value: '"123456""******""3456"' },
+                  { label: "戻り値", value: '"CARD 123456******3456 VALID"' },
+                ],
+              },
+            },
+            {
+              no: 13,
+              title: "応答電文53バイトを組み立て",
+              className: "TcpMessageCodec",
+              methodName: "encodeResponse()",
+              code: 'String dataLength = String.format("%04d", ResponseField.totalLength() - 4);\nResponseField.DATA_LENGTH.write(result, dataLength);',
+              why: "データ長項目には自身の4バイトを除いた49を設定する。TXT属性のため4桁ゼロ埋め済みの文字列を渡す",
+              activeNodes: ["TcpMessageCodec", "ResponseField"],
+              requestRange: null,
+              responseRange: [0, 52],
+              decodeDetail: {
+                type: "ENCODE",
+                value: "53バイト応答を組み立て",
+                rows: [
+                  { label: "DATA_LENGTH", value: '"0049"' },
+                  { label: "MESSAGE_TYPE", value: '"0100"' },
+                  { label: "RETURN_CODE", value: '"00"' },
+                  { label: "MESSAGE", value: "CARD 123456******3456 VALID" },
+                  { label: "合計", value: "53バイト" },
+                ],
+              },
+            },
+            {
+              no: 14,
+              title: "応答を送信し、ソケットをクローズ",
+              className: "TcpConnectionHandler",
+              methodName: "handle()",
+              code: "output.write(responseBytes);\noutput.flush();",
+              why: "try (socket) のtry-with-resourcesにより、処理完了後にソケットが確実にクローズされる",
+              activeNodes: ["TcpConnectionHandler", "対向先サーバー"],
+              requestRange: null,
+              responseRange: [0, 52],
+              decodeDetail: {
+                type: "SEND",
+                value: "53バイト送信",
+                rows: [
+                  { label: "バイト数", value: "53" },
+                  { label: "チャネル", value: "Socket.getOutputStream()" },
+                  { label: "ソケット", value: "close()" },
+                ],
+              },
+            },
+          ],
+        },
+        {
+          id: "scenario2",
+          label: "0200 決済",
+          requestBytes: [
+            0x30, 0x30, 0x31, 0x34, 0x02, 0x00, 0x12, 0x34, 0x56, 0x78, 0x90,
+            0x12, 0x34, 0x56, 0x00, 0x00, 0x03, 0xe8,
+          ],
+          responseBytes: [
+            0x30, 0x30, 0x34, 0x39, 0x02, 0x00, 0x00, 0x50, 0x41, 0x59, 0x4d,
+            0x45, 0x4e, 0x54, 0x20, 0x41, 0x50, 0x50, 0x52, 0x4f, 0x56, 0x45,
+            0x44, 0x20, 0x41, 0x4d, 0x4f, 0x55, 0x4e, 0x54, 0x20, 0x31, 0x30,
+            0x30, 0x30, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
+            0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
+          ],
+          steps: [
+            {
+              no: 1,
+              title: "ポートをバインドして受け入れ開始",
+              className: "TcpServer",
+              methodName: "afterPropertiesSet()",
+              code: "serverSocket = new ServerSocket(port);",
+              why: "InitializingBean実装によりDIの完了直後にSpringが自動呼び出しするため、インジェクション完了後に確実に初期化できる。ポート番号は application.properties の tcp.server.port=8081 を @Value で注入",
+              activeNodes: ["TcpServer（初期化）"],
+              requestRange: null,
+              responseRange: null,
+              decodeDetail: null,
+            },
+            {
+              no: 2,
+              title: "接続を受け入れ、タイムアウトを設定",
+              className: "TcpServer",
+              methodName: "afterPropertiesSet()",
+              code: "var socket = serverSocket.accept();\nsocket.setSoTimeout(socketTimeoutMillis);",
+              why: "accept() がブロッキングするため単一スレッドのacceptExecutorに分離している。tcp.server.socketTimeoutMillis=30000で無通信時の滞留を防ぐ",
+              activeNodes: ["対向先サーバー", "TcpServer（acceptスレッド）"],
+              requestRange: [0, 3],
+              responseRange: null,
+              decodeDetail: {
+                type: "TXT",
+                value: "0014",
+                rows: [
+                  { label: "バイト値", value: "30 30 31 34" },
+                  { label: "属性", value: "US-ASCII" },
+                  { label: "デコード", value: '"0014"' },
+                ],
+              },
+            },
+            {
+              no: 3,
+              title: "ワーカースレッドへ処理を委譲",
+              className: "TcpServer",
+              methodName: "afterPropertiesSet()",
+              callee: "TcpConnectionHandler#handle()",
+              code: "workerExecutor.submit(() -> connectionHandler.handle(socket));",
+              why: "接続処理を固定プール（tcp.server.threadPoolSize=10）で並行実行し、受け入れが滞らないようにするため。このコードは acceptExecutor に渡したラムダ内で実行される",
+              activeNodes: [
+                "TcpServer（acceptスレッド）",
+                "TcpConnectionHandler",
+              ],
+              requestRange: [0, 3],
+              responseRange: null,
+              decodeDetail: null,
+            },
+            {
+              no: 4,
+              title: "ヘッダ4バイトを読み切る",
+              className: "TcpConnectionHandler",
+              methodName: "handle()",
+              code: "int bytesRead = readFully(input, header, 4);\nif (bytesRead < 4) { return; }",
+              callee: "TcpConnectionHandler#readFully()",
+              why: "1回の read() で全量が届かない場合があるため、複数回読み込んで4バイトを読み切る。4バイト未満のまま切断された場合は応答せずクローズ",
+              activeNodes: ["TcpConnectionHandler"],
+              requestRange: [0, 3],
+              responseRange: null,
+              decodeDetail: {
+                type: "TXT",
+                value: "0014",
+                rows: [
+                  { label: "バイト値", value: "30 30 31 34" },
+                  { label: "属性", value: "US-ASCII" },
+                  { label: "デコード", value: '"0014"' },
+                ],
+              },
+            },
+            {
+              no: 5,
+              title: "データ長をデコード",
+              className: "TcpMessageCodec",
+              methodName: "decodeDataLength()",
+              code: "String dataLengthStr = RequestField.DATA_LENGTH.extract(header);\nreturn Integer.parseInt(dataLengthStr.trim());",
+              why: "データ長はTXT属性のため、US-ASCII文字列へデコードしてから数値化する。数値化できない場合は TcpMessageFormatException をスロー",
+              activeNodes: ["TcpMessageCodec", "RequestField / FieldType"],
+              requestRange: [0, 3],
+              responseRange: null,
+              decodeDetail: {
+                type: "TXT",
+                value: "0014",
+                rows: [
+                  { label: "フィールド", value: "DATA_LENGTH" },
+                  { label: "バイト値", value: "30 30 31 34" },
+                  { label: "US-ASCII", value: '"0014"' },
+                  { label: "数値化", value: "14" },
+                ],
+              },
+            },
+            {
+              no: 6,
+              title: "データ長を検証（期待値14）",
+              className: "TcpConnectionHandler",
+              methodName: "handle()",
+              code: "if (dataLength != RequestField.totalLength() - 4) {\n    throw new TcpMessageFormatException(...);\n}",
+              why: "固定長プロトコルのため、不正なデータ長で本体読み込みがタイムアウトまでブロックしたり、負値で NegativeArraySizeException が発生するのを防ぐ",
+              activeNodes: ["TcpConnectionHandler"],
+              requestRange: null,
+              responseRange: null,
+              decodeDetail: {
+                type: "VALIDATE",
+                value: "14 == 18 - 4 ? OK",
+                rows: [
+                  { label: "実際のデータ長", value: "14" },
+                  { label: "期待値", value: "14 (18 - 4)" },
+                  { label: "検証結果", value: "正常" },
+                ],
+              },
+            },
+            {
+              no: 7,
+              title: "本体14バイトを読み切る",
+              className: "TcpConnectionHandler",
+              methodName: "handle()",
+              code: "byte[] body = new byte[dataLength];\nbytesRead = readFully(input, body, dataLength);",
+              callee: "TcpConnectionHandler#readFully()",
+              why: "ヘッダで確定したデータ長ぶんだけ読み込む。不足のまま切断された場合は応答せずクローズ",
+              activeNodes: ["TcpConnectionHandler"],
+              requestRange: [4, 17],
+              responseRange: null,
+              decodeDetail: {
+                type: "BYTES",
+                value: "リクエスト本体14バイト",
+                rows: [
+                  { label: "オフセット", value: "4〜17" },
+                  { label: "バイト数", value: "14" },
+                  {
+                    label: "内容",
+                    value: "MESSAGE_TYPE(2) + CARD_NUMBER(8) + AMOUNT(4)",
+                  },
+                ],
+              },
+            },
+            {
+              no: 8,
+              title: "ヘッダと本体を18バイトへ結合",
+              className: "TcpConnectionHandler",
+              methodName: "handle()",
+              code: "System.arraycopy(header, 0, message, 0, 4);\nSystem.arraycopy(body, 0, message, 4, dataLength);",
+              why: "後続の decodeRequest() が電文全体（18バイト）を前提にオフセットで各フィールドを切り出すため",
+              activeNodes: ["TcpConnectionHandler"],
+              requestRange: [0, 17],
+              responseRange: null,
+              decodeDetail: {
+                type: "COMBINE",
+                value: "4 + 14 = 18バイト",
+                rows: [
+                  { label: "ヘッダ", value: "0〜3 (4バイト)" },
+                  { label: "本体", value: "4〜17 (14バイト)" },
+                  { label: "合計", value: "18バイト" },
+                ],
+              },
+            },
+            {
+              no: 9,
+              title: "3フィールドを抽出しTcpRequestを生成",
+              className: "TcpMessageCodec",
+              methodName: "decodeRequest()",
+              code: "String messageType = RequestField.MESSAGE_TYPE.extract(message);\nString cardNumber = RequestField.CARD_NUMBER.extract(message);\nString amount = RequestField.AMOUNT.extract(message);",
+              why: "各フィールドがオフセット・長さ・属性を自身で持つため、電文レイアウトの知識を RequestField へ集約できる",
+              activeNodes: ["TcpMessageCodec", "RequestField / FieldType"],
+              requestRange: [0, 17],
+              responseRange: null,
+              decodeDetail: {
+                type: "DECODE",
+                value: "3フィールドを抽出",
+                rows: [
+                  {
+                    label: "MESSAGE_TYPE",
+                    value: 'オフセット4-5 (BCD) → "0200"',
+                  },
+                  {
+                    label: "CARD_NUMBER",
+                    value: 'オフセット6-13 (BCD) → "1234567890123456"',
+                  },
+                  { label: "AMOUNT", value: 'オフセット14-17 (HEX) → "1000"' },
+                ],
+              },
+            },
+            {
+              no: 10,
+              title: "コード値から電文種別を解決",
+              className: "TcpConnectionHandler",
+              methodName: "handle()",
+              code: "MessageType messageType = MessageType.fromCode(request.getMessageType()).orElse(null);",
+              callee: "MessageType#fromCode()",
+              why: "未定義のコード値を Optional.empty() で表現し、null判定でリターンコード91の応答へ分岐させるため",
+              activeNodes: ["TcpConnectionHandler", "MessageType"],
+              requestRange: [4, 5],
+              responseRange: null,
+              decodeDetail: {
+                type: "BCD",
+                value: "0200",
+                rows: [
+                  { label: "バイト値", value: "02 00" },
+                  {
+                    label: "BCD展開",
+                    value: "upper=0 lower=2, upper=0 lower=0",
+                  },
+                  { label: "デコード", value: '"0200"' },
+                  { label: "MessageType", value: "PAYMENT" },
+                ],
+              },
+            },
+            {
+              no: 11,
+              title: "電文振り分け：種別からコントローラを解決",
+              className: "TcpConnectionHandler",
+              methodName: "handle()",
+              code: "TcpController controller = dispatcher.resolve(messageType);",
+              callee: "TcpDispatcher#resolve()",
+              why: "起動時に List<TcpController> から ConcurrentHashMap を構築済み。複数の接続スレッドから同時参照されるためスレッドセーフな実装が必要",
+              activeNodes: ["TcpConnectionHandler", "TcpDispatcher"],
+              requestRange: [4, 5],
+              responseRange: null,
+              decodeDetail: {
+                type: "RESOLVE",
+                value: "種別 → コントローラ",
+                rows: [
+                  { label: "電文種別", value: '"0200"' },
+                  { label: "対応クラス", value: "PaymentTcpController" },
+                ],
+              },
+            },
+            {
+              no: 12,
+              title: "業務処理を実行",
+              className: "PaymentTcpController",
+              methodName: "handle()",
+              code: "String message = paymentService.approve(cardNumber, amount);\nreturn new TcpResponse(request.getMessageType(), ReturnCode.SUCCESS, message);",
+              why: "金額を含む承認メッセージ PAYMENT APPROVED AMOUNT 1000 を生成する（PoCのためカード番号は未使用）",
+              activeNodes: [
+                "CardInquiryTcpController / PaymentTcpController",
+                "CardInquiryServiceImpl / PaymentServiceImpl",
+              ],
+              requestRange: [14, 17],
+              responseRange: null,
+              decodeDetail: {
+                type: "HEX",
+                value: "1000",
+                rows: [
+                  { label: "バイト値", value: "00 00 03 E8" },
+                  { label: "ビッグエンディアン", value: "符号付き整数値" },
+                  { label: "デコード", value: '"1000"' },
+                  {
+                    label: "承認メッセージ",
+                    value: '"PAYMENT APPROVED AMOUNT 1000"',
+                  },
+                ],
+              },
+            },
+            {
+              no: 13,
+              title: "応答電文53バイトを組み立て",
+              className: "TcpMessageCodec",
+              methodName: "encodeResponse()",
+              code: 'String dataLength = String.format("%04d", ResponseField.totalLength() - 4);\nResponseField.DATA_LENGTH.write(result, dataLength);',
+              why: "データ長項目には自身の4バイトを除いた49を設定する。TXT属性のため4桁ゼロ埋め済みの文字列を渡す",
+              activeNodes: ["TcpMessageCodec", "ResponseField"],
+              requestRange: null,
+              responseRange: [0, 52],
+              decodeDetail: {
+                type: "ENCODE",
+                value: "53バイト応答を組み立て",
+                rows: [
+                  { label: "DATA_LENGTH", value: '"0049"' },
+                  { label: "MESSAGE_TYPE", value: '"0200"' },
+                  { label: "RETURN_CODE", value: '"00"' },
+                  { label: "MESSAGE", value: "PAYMENT APPROVED AMOUNT 1000" },
+                  { label: "合計", value: "53バイト" },
+                ],
+              },
+            },
+            {
+              no: 14,
+              title: "応答を送信し、ソケットをクローズ",
+              className: "TcpConnectionHandler",
+              methodName: "handle()",
+              code: "output.write(responseBytes);\noutput.flush();",
+              why: "try (socket) のtry-with-resourcesにより、処理完了後にソケットが確実にクローズされる",
+              activeNodes: ["TcpConnectionHandler", "対向先サーバー"],
+              requestRange: null,
+              responseRange: [0, 52],
+              decodeDetail: {
+                type: "SEND",
+                value: "53バイト送信",
+                rows: [
+                  { label: "バイト数", value: "53" },
+                  { label: "チャネル", value: "Socket.getOutputStream()" },
+                  { label: "ソケット", value: "close()" },
+                ],
+              },
+            },
+          ],
+        },
+        {
+          id: "scenario3",
+          label: "RC=90 フォーマット不正",
+          requestBytes: [
+            0x30, 0x30, 0x31, 0x34, 0x01, 0x00, 0x12, 0x34, 0x0a, 0x78, 0x90,
+            0x12, 0x34, 0x56, 0x00, 0x00, 0x00, 0x00,
+          ],
+          responseBytes: [
+            0x30, 0x30, 0x34, 0x39, 0x00, 0x00, 0x90, 0x49, 0x4e, 0x56, 0x41,
+            0x4c, 0x49, 0x44, 0x20, 0x4d, 0x45, 0x53, 0x53, 0x41, 0x47, 0x45,
+            0x20, 0x46, 0x4f, 0x52, 0x4d, 0x41, 0x54, 0x20, 0x20, 0x20, 0x20,
+            0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
+            0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
+          ],
+          steps: [
+            {
+              no: 1,
+              title: "ポートをバインドして受け入れ開始",
+              className: "TcpServer",
+              methodName: "afterPropertiesSet()",
+              code: "serverSocket = new ServerSocket(port);",
+              why: "InitializingBean実装によりDIの完了直後にSpringが自動呼び出しするため、インジェクション完了後に確実に初期化できる。ポート番号は application.properties の tcp.server.port=8081 を @Value で注入",
+              activeNodes: ["TcpServer（初期化）"],
+              requestRange: null,
+              responseRange: null,
+              decodeDetail: null,
+            },
+            {
+              no: 2,
+              title: "接続を受け入れ、タイムアウトを設定",
+              className: "TcpServer",
+              methodName: "afterPropertiesSet()",
+              code: "var socket = serverSocket.accept();\nsocket.setSoTimeout(socketTimeoutMillis);",
+              why: "accept() がブロッキングするため単一スレッドのacceptExecutorに分離している。tcp.server.socketTimeoutMillis=30000で無通信時の滞留を防ぐ",
+              activeNodes: ["対向先サーバー", "TcpServer（acceptスレッド）"],
+              requestRange: [0, 3],
+              responseRange: null,
+              decodeDetail: {
+                type: "TXT",
+                value: "0014",
+                rows: [
+                  { label: "バイト値", value: "30 30 31 34" },
+                  { label: "属性", value: "US-ASCII" },
+                  { label: "デコード", value: '"0014"' },
+                ],
+              },
+            },
+            {
+              no: 3,
+              title: "ワーカースレッドへ処理を委譲",
+              className: "TcpServer",
+              methodName: "afterPropertiesSet()",
+              callee: "TcpConnectionHandler#handle()",
+              code: "workerExecutor.submit(() -> connectionHandler.handle(socket));",
+              why: "接続処理を固定プール（tcp.server.threadPoolSize=10）で並行実行し、受け入れが滞らないようにするため。このコードは acceptExecutor に渡したラムダ内で実行される",
+              activeNodes: [
+                "TcpServer（acceptスレッド）",
+                "TcpConnectionHandler",
+              ],
+              requestRange: [0, 3],
+              responseRange: null,
+              decodeDetail: null,
+            },
+            {
+              no: 4,
+              title: "ヘッダ4バイトを読み切る",
+              className: "TcpConnectionHandler",
+              methodName: "handle()",
+              code: "int bytesRead = readFully(input, header, 4);\nif (bytesRead < 4) { return; }",
+              callee: "TcpConnectionHandler#readFully()",
+              why: "1回の read() で全量が届かない場合があるため、複数回読み込んで4バイトを読み切る。4バイト未満のまま切断された場合は応答せずクローズ",
+              activeNodes: ["TcpConnectionHandler"],
+              requestRange: [0, 3],
+              responseRange: null,
+              decodeDetail: {
+                type: "TXT",
+                value: "0014",
+                rows: [
+                  { label: "バイト値", value: "30 30 31 34" },
+                  { label: "属性", value: "US-ASCII" },
+                  { label: "デコード", value: '"0014"' },
+                ],
+              },
+            },
+            {
+              no: 5,
+              title: "データ長をデコード",
+              className: "TcpMessageCodec",
+              methodName: "decodeDataLength()",
+              code: "String dataLengthStr = RequestField.DATA_LENGTH.extract(header);\nreturn Integer.parseInt(dataLengthStr.trim());",
+              why: "データ長はTXT属性のため、US-ASCII文字列へデコードしてから数値化する。数値化できない場合は TcpMessageFormatException をスロー",
+              activeNodes: ["TcpMessageCodec", "RequestField / FieldType"],
+              requestRange: [0, 3],
+              responseRange: null,
+              decodeDetail: {
+                type: "TXT",
+                value: "0014",
+                rows: [
+                  { label: "フィールド", value: "DATA_LENGTH" },
+                  { label: "バイト値", value: "30 30 31 34" },
+                  { label: "US-ASCII", value: '"0014"' },
+                  { label: "数値化", value: "14" },
+                ],
+              },
+            },
+            {
+              no: 6,
+              title: "データ長を検証（期待値14）",
+              className: "TcpConnectionHandler",
+              methodName: "handle()",
+              code: "if (dataLength != RequestField.totalLength() - 4) {\n    throw new TcpMessageFormatException(...);\n}",
+              why: "固定長プロトコルのため、不正なデータ長で本体読み込みがタイムアウトまでブロックしたり、負値で NegativeArraySizeException が発生するのを防ぐ",
+              activeNodes: ["TcpConnectionHandler"],
+              requestRange: null,
+              responseRange: null,
+              decodeDetail: {
+                type: "VALIDATE",
+                value: "14 == 18 - 4 ? OK",
+                rows: [
+                  { label: "実際のデータ長", value: "14" },
+                  { label: "期待値", value: "14 (18 - 4)" },
+                  { label: "検証結果", value: "正常" },
+                ],
+              },
+            },
+            {
+              no: 7,
+              title: "本体14バイトを読み切る",
+              className: "TcpConnectionHandler",
+              methodName: "handle()",
+              code: "byte[] body = new byte[dataLength];\nbytesRead = readFully(input, body, dataLength);",
+              callee: "TcpConnectionHandler#readFully()",
+              why: "ヘッダで確定したデータ長ぶんだけ読み込む。不足のまま切断された場合は応答せずクローズ",
+              activeNodes: ["TcpConnectionHandler"],
+              requestRange: [4, 17],
+              responseRange: null,
+              decodeDetail: {
+                type: "BYTES",
+                value: "リクエスト本体14バイト",
+                rows: [
+                  { label: "オフセット", value: "4〜17" },
+                  { label: "バイト数", value: "14" },
+                  {
+                    label: "内容",
+                    value: "MESSAGE_TYPE(2) + CARD_NUMBER(8) + AMOUNT(4)",
+                  },
+                ],
+              },
+            },
+            {
+              no: 8,
+              title: "ヘッダと本体を18バイトへ結合",
+              className: "TcpConnectionHandler",
+              methodName: "handle()",
+              code: "System.arraycopy(header, 0, message, 0, 4);\nSystem.arraycopy(body, 0, message, 4, dataLength);",
+              why: "後続の decodeRequest() が電文全体（18バイト）を前提にオフセットで各フィールドを切り出すため",
+              activeNodes: ["TcpConnectionHandler"],
+              requestRange: [0, 17],
+              responseRange: null,
+              decodeDetail: {
+                type: "COMBINE",
+                value: "4 + 14 = 18バイト",
+                rows: [
+                  { label: "ヘッダ", value: "0〜3 (4バイト)" },
+                  { label: "本体", value: "4〜17 (14バイト)" },
+                  { label: "合計", value: "18バイト" },
+                ],
+              },
+            },
+            {
+              no: 9,
+              title:
+                "BCD不正ニブルを検出して例外（MESSAGE_TYPE は正常、CARD_NUMBER で不正値）",
+              className: "FieldType.BCD",
+              methodName: "decode()",
+              code: 'for (byte b : raw) {\n    int upper = (b >> 4) & 0x0F;\n    int lower = b & 0x0F;\n    if (upper > 9 || lower > 9) {\n        throw new TcpMessageFormatException("BCD decoding error: invalid nibble detected");\n    }\n}',
+              why: "MESSAGE_TYPE の抽出は成功するが、CARD_NUMBER の3バイト目で不正ニブルを検出して例外をスローする。オフセット8のバイトが0x0A（ニブル値10）は BCDで不正",
+              activeNodes: ["RequestField / FieldType"],
+              isError: true,
+              errorNodes: ["RequestField / FieldType"],
+              requestRange: [6, 13],
+              responseRange: null,
+              decodeDetail: {
+                type: "ERROR",
+                value: "BCD不正ニブル",
+                rows: [
+                  { label: "オフセット", value: "8（CARD_NUMBER 3バイト目）" },
+                  { label: "バイト値", value: "0x0A" },
+                  { label: "BCD展開試行", value: "upper=0 lower=A(=10)" },
+                  { label: "結果", value: "TcpMessageFormatException" },
+                ],
+              },
+            },
+            {
+              no: 10,
+              title: "catch節で例外を捕捉し、リターンコード90で応答",
+              className: "TcpConnectionHandler",
+              methodName: "handle()",
+              code: 'try {\n    // リクエスト処理...\n} catch (TcpMessageFormatException e) {\n    e.printStackTrace();\n    TcpResponse errorResponse = new TcpResponse("0000", ReturnCode.INVALID_MESSAGE, "INVALID MESSAGE FORMAT");\n    byte[] responseBytes = messageCodec.encodeResponse(errorResponse);\n    output.write(responseBytes);\n    output.flush();\n}',
+              why: "電文種別の抽出可否に関わらず一律で種別0000とし、リターンコード90で応答する。スタックトレースも出力する",
+              activeNodes: ["TcpMessageCodec", "TcpConnectionHandler"],
+              requestRange: [0, 17],
+              responseRange: null,
+              decodeDetail: {
+                type: "CATCH",
+                value: "例外処理",
+                rows: [
+                  { label: "例外種別", value: "TcpMessageFormatException" },
+                  { label: "リターンコード", value: "90 (INVALID_MESSAGE)" },
+                  { label: "メッセージ", value: "INVALID MESSAGE FORMAT" },
+                  {
+                    label: "補足",
+                    value: "データ長が期待値と異なる場合も同じ経路",
+                  },
+                ],
+              },
+            },
+            {
+              no: 11,
+              title: "応答電文53バイトを組み立てて送信",
+              className: "TcpConnectionHandler",
+              methodName: "handle()",
+              code: "byte[] responseBytes = messageCodec.encodeResponse(errorResponse);\noutput.write(responseBytes);\noutput.flush();",
+              why: "応答オブジェクト（電文種別0000、リターンコード90）を電文バイト列にエンコードして53バイトを構築し、出力ストリーム経由でクライアントへ送信",
+              activeNodes: [
+                "TcpConnectionHandler",
+                "TcpMessageCodec",
+                "対向先サーバー",
+              ],
+              requestRange: null,
+              responseRange: [0, 52],
+              decodeDetail: {
+                type: "ENCODE",
+                value: "53バイト応答を組み立て（エラー）",
+                rows: [
+                  { label: "DATA_LENGTH", value: '"0049"' },
+                  { label: "MESSAGE_TYPE", value: '"0000"' },
+                  { label: "RETURN_CODE", value: '"90" → 0x90' },
+                  { label: "MESSAGE", value: "INVALID MESSAGE FORMAT" },
+                  { label: "合計", value: "53バイト" },
+                ],
+              },
+            },
+          ],
+        },
+        {
+          id: "scenario4",
+          label: "RC=91 未定義種別",
+          requestBytes: [
+            0x30, 0x30, 0x31, 0x34, 0x03, 0x00, 0x12, 0x34, 0x56, 0x78, 0x90,
+            0x12, 0x34, 0x56, 0x00, 0x00, 0x00, 0x00,
+          ],
+          responseBytes: [
+            0x30, 0x30, 0x34, 0x39, 0x03, 0x00, 0x91, 0x55, 0x4e, 0x44, 0x45,
+            0x46, 0x49, 0x4e, 0x45, 0x44, 0x20, 0x4d, 0x45, 0x53, 0x53, 0x41,
+            0x47, 0x45, 0x20, 0x54, 0x59, 0x50, 0x45, 0x20, 0x20, 0x20, 0x20,
+            0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
+            0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
+          ],
+          steps: [
+            {
+              no: 1,
+              title: "ポートをバインドして受け入れ開始",
+              className: "TcpServer",
+              methodName: "afterPropertiesSet()",
+              code: "serverSocket = new ServerSocket(port);",
+              why: "InitializingBean実装によりDIの完了直後にSpringが自動呼び出しするため、インジェクション完了後に確実に初期化できる。ポート番号は application.properties の tcp.server.port=8081 を @Value で注入",
+              activeNodes: ["TcpServer（初期化）"],
+              requestRange: null,
+              responseRange: null,
+              decodeDetail: null,
+            },
+            {
+              no: 2,
+              title: "接続を受け入れ、タイムアウトを設定",
+              className: "TcpServer",
+              methodName: "afterPropertiesSet()",
+              code: "var socket = serverSocket.accept();\nsocket.setSoTimeout(socketTimeoutMillis);",
+              why: "accept() がブロッキングするため単一スレッドのacceptExecutorに分離している。tcp.server.socketTimeoutMillis=30000で無通信時の滞留を防ぐ",
+              activeNodes: ["対向先サーバー", "TcpServer（acceptスレッド）"],
+              requestRange: [0, 3],
+              responseRange: null,
+              decodeDetail: {
+                type: "TXT",
+                value: "0014",
+                rows: [
+                  { label: "バイト値", value: "30 30 31 34" },
+                  { label: "属性", value: "US-ASCII" },
+                  { label: "デコード", value: '"0014"' },
+                ],
+              },
+            },
+            {
+              no: 3,
+              title: "ワーカースレッドへ処理を委譲",
+              className: "TcpServer",
+              methodName: "afterPropertiesSet()",
+              callee: "TcpConnectionHandler#handle()",
+              code: "workerExecutor.submit(() -> connectionHandler.handle(socket));",
+              why: "接続処理を固定プール（tcp.server.threadPoolSize=10）で並行実行し、受け入れが滞らないようにするため。このコードは acceptExecutor に渡したラムダ内で実行される",
+              activeNodes: [
+                "TcpServer（acceptスレッド）",
+                "TcpConnectionHandler",
+              ],
+              requestRange: [0, 3],
+              responseRange: null,
+              decodeDetail: null,
+            },
+            {
+              no: 4,
+              title: "ヘッダ4バイトを読み切る",
+              className: "TcpConnectionHandler",
+              methodName: "handle()",
+              code: "int bytesRead = readFully(input, header, 4);\nif (bytesRead < 4) { return; }",
+              callee: "TcpConnectionHandler#readFully()",
+              why: "1回の read() で全量が届かない場合があるため、複数回読み込んで4バイトを読み切る。4バイト未満のまま切断された場合は応答せずクローズ",
+              activeNodes: ["TcpConnectionHandler"],
+              requestRange: [0, 3],
+              responseRange: null,
+              decodeDetail: {
+                type: "TXT",
+                value: "0014",
+                rows: [
+                  { label: "バイト値", value: "30 30 31 34" },
+                  { label: "属性", value: "US-ASCII" },
+                  { label: "デコード", value: '"0014"' },
+                ],
+              },
+            },
+            {
+              no: 5,
+              title: "データ長をデコード",
+              className: "TcpMessageCodec",
+              methodName: "decodeDataLength()",
+              code: "String dataLengthStr = RequestField.DATA_LENGTH.extract(header);\nreturn Integer.parseInt(dataLengthStr.trim());",
+              why: "データ長はTXT属性のため、US-ASCII文字列へデコードしてから数値化する。数値化できない場合は TcpMessageFormatException をスロー",
+              activeNodes: ["TcpMessageCodec", "RequestField / FieldType"],
+              requestRange: [0, 3],
+              responseRange: null,
+              decodeDetail: {
+                type: "TXT",
+                value: "0014",
+                rows: [
+                  { label: "フィールド", value: "DATA_LENGTH" },
+                  { label: "バイト値", value: "30 30 31 34" },
+                  { label: "US-ASCII", value: '"0014"' },
+                  { label: "数値化", value: "14" },
+                ],
+              },
+            },
+            {
+              no: 6,
+              title: "データ長を検証（期待値14）",
+              className: "TcpConnectionHandler",
+              methodName: "handle()",
+              code: "if (dataLength != RequestField.totalLength() - 4) {\n    throw new TcpMessageFormatException(...);\n}",
+              why: "固定長プロトコルのため、不正なデータ長で本体読み込みがタイムアウトまでブロックしたり、負値で NegativeArraySizeException が発生するのを防ぐ",
+              activeNodes: ["TcpConnectionHandler"],
+              requestRange: null,
+              responseRange: null,
+              decodeDetail: {
+                type: "VALIDATE",
+                value: "14 == 18 - 4 ? OK",
+                rows: [
+                  { label: "実際のデータ長", value: "14" },
+                  { label: "期待値", value: "14 (18 - 4)" },
+                  { label: "検証結果", value: "正常" },
+                ],
+              },
+            },
+            {
+              no: 7,
+              title: "本体14バイトを読み切る",
+              className: "TcpConnectionHandler",
+              methodName: "handle()",
+              code: "byte[] body = new byte[dataLength];\nbytesRead = readFully(input, body, dataLength);",
+              callee: "TcpConnectionHandler#readFully()",
+              why: "ヘッダで確定したデータ長ぶんだけ読み込む。不足のまま切断された場合は応答せずクローズ",
+              activeNodes: ["TcpConnectionHandler"],
+              requestRange: [4, 17],
+              responseRange: null,
+              decodeDetail: {
+                type: "BYTES",
+                value: "リクエスト本体14バイト",
+                rows: [
+                  { label: "オフセット", value: "4〜17" },
+                  { label: "バイト数", value: "14" },
+                  {
+                    label: "内容",
+                    value: "MESSAGE_TYPE(2) + CARD_NUMBER(8) + AMOUNT(4)",
+                  },
+                ],
+              },
+            },
+            {
+              no: 8,
+              title: "ヘッダと本体を18バイトへ結合",
+              className: "TcpConnectionHandler",
+              methodName: "handle()",
+              code: "System.arraycopy(header, 0, message, 0, 4);\nSystem.arraycopy(body, 0, message, 4, dataLength);",
+              why: "後続の decodeRequest() が電文全体（18バイト）を前提にオフセットで各フィールドを切り出すため",
+              activeNodes: ["TcpConnectionHandler"],
+              requestRange: [0, 17],
+              responseRange: null,
+              decodeDetail: {
+                type: "COMBINE",
+                value: "4 + 14 = 18バイト",
+                rows: [
+                  { label: "ヘッダ", value: "0〜3 (4バイト)" },
+                  { label: "本体", value: "4〜17 (14バイト)" },
+                  { label: "合計", value: "18バイト" },
+                ],
+              },
+            },
+            {
+              no: 9,
+              title:
+                "3フィールドを抽出しTcpRequestを生成（電文のデコード自体は成功）",
+              className: "TcpMessageCodec",
+              methodName: "decodeRequest()",
+              code: "String messageType = RequestField.MESSAGE_TYPE.extract(message);\nString cardNumber = RequestField.CARD_NUMBER.extract(message);\nString amount = RequestField.AMOUNT.extract(message);",
+              why: '各フィールドがオフセット・長さ・属性を自身で持つため、電文レイアウトの知識を RequestField へ集約できる。MESSAGE_TYPE="0300"は未定義',
+              activeNodes: ["TcpMessageCodec", "RequestField / FieldType"],
+              requestRange: [0, 17],
+              responseRange: null,
+              decodeDetail: {
+                type: "DECODE",
+                value: "3フィールドを抽出",
+                rows: [
+                  {
+                    label: "MESSAGE_TYPE",
+                    value: 'オフセット4-5 (BCD) → "0300"',
+                  },
+                  {
+                    label: "CARD_NUMBER",
+                    value: 'オフセット6-13 (BCD) → "1234567890123456"',
+                  },
+                  { label: "AMOUNT", value: 'オフセット14-17 (HEX) → "0"' },
+                ],
+              },
+            },
+            {
+              no: 10,
+              title:
+                "電文種別が未定義→振り分け前で分岐、リターンコード91で応答（TcpDispatcher#resolve()は呼ばれない）",
+              className: "TcpConnectionHandler",
+              methodName: "handle()",
+              callee: "MessageType#fromCode()",
+              code: 'MessageType messageType = MessageType.fromCode(request.getMessageType()).orElse(null);\nif (messageType == null) {\n    response = new TcpResponse(request.getMessageType(), ReturnCode.UNDEFINED_MESSAGE_TYPE, "UNDEFINED MESSAGE TYPE");\n}',
+              why: "MessageType に定義済みでも対応する TcpController が登録されていない場合は dispatcher.resolve() が null を返し、同じくリターンコード91で応答する。ここで重要なのは「電文種別は不明ではなく未定義」のため、リクエストの種別 0300 をそのまま応答へ返す点",
+              activeNodes: ["TcpConnectionHandler", "MessageType"],
+              isError: true,
+              errorNodes: ["MessageType"],
+              requestRange: [4, 5],
+              responseRange: null,
+              decodeDetail: {
+                type: "BCD",
+                value: "0300",
+                rows: [
+                  { label: "バイト値", value: "03 00" },
+                  {
+                    label: "BCD展開",
+                    value: "upper=0 lower=3, upper=0 lower=0",
+                  },
+                  { label: "デコード", value: '"0300"' },
+                  {
+                    label: 'MessageType.fromCode("0300")',
+                    value: "Optional.empty()",
+                  },
+                  { label: "orElse(null)の戻り値", value: "null" },
+                  {
+                    label: "リターンコード",
+                    value: "91 (UNDEFINED_MESSAGE_TYPE)",
+                  },
+                ],
+              },
+            },
+            {
+              no: 11,
+              title: "応答電文53バイトを組み立てて送信",
+              className: "TcpConnectionHandler",
+              methodName: "handle()",
+              code: "byte[] responseBytes = messageCodec.encodeResponse(response);\noutput.write(responseBytes);\noutput.flush();",
+              why: "応答オブジェクト（電文種別0300、リターンコード91）を電文バイト列にエンコードして53バイトを構築し、出力ストリーム経由でクライアントへ送信",
+              activeNodes: [
+                "TcpConnectionHandler",
+                "TcpMessageCodec",
+                "対向先サーバー",
+              ],
+              requestRange: null,
+              responseRange: [0, 52],
+              decodeDetail: {
+                type: "ENCODE",
+                value: "53バイト応答を組み立て（未定義）",
+                rows: [
+                  { label: "DATA_LENGTH", value: '"0049"' },
+                  { label: "MESSAGE_TYPE", value: '"0300"' },
+                  { label: "RETURN_CODE", value: '"91" → 0x91' },
+                  { label: "MESSAGE", value: "UNDEFINED MESSAGE TYPE" },
+                  { label: "合計", value: "53バイト" },
+                ],
+              },
+            },
+          ],
+        },
+        {
+          id: "scenario5",
+          label: "無応答（タイムアウト）",
+          requestBytes: [
+            0x30,
+            0x30,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+          ],
+          responseBytes: [],
+          steps: [
+            {
+              no: 1,
+              title: "ポートをバインドして受け入れ開始",
+              className: "TcpServer",
+              methodName: "afterPropertiesSet()",
+              code: "serverSocket = new ServerSocket(port);",
+              why: "InitializingBean実装によりDIの完了直後にSpringが自動呼び出しするため、インジェクション完了後に確実に初期化できる。ポート番号は application.properties の tcp.server.port=8081 を @Value で注入",
+              activeNodes: ["TcpServer（初期化）"],
+              requestRange: null,
+              responseRange: null,
+              decodeDetail: null,
+            },
+            {
+              no: 2,
+              title: "接続を受け入れ、タイムアウトを設定",
+              className: "TcpServer",
+              methodName: "afterPropertiesSet()",
+              code: "var socket = serverSocket.accept();\nsocket.setSoTimeout(socketTimeoutMillis);",
+              why: "accept() がブロッキングするため単一スレッドのacceptExecutorに分離している。tcp.server.socketTimeoutMillis=30000で無通信時の滞留を防ぐ",
+              activeNodes: ["対向先サーバー", "TcpServer（acceptスレッド）"],
+              requestRange: [0, 1],
+              responseRange: null,
+              decodeDetail: {
+                type: "TXT_PARTIAL",
+                value: "ヘッダ2バイトのみ",
+                rows: [
+                  { label: "バイト値", value: "30 30" },
+                  { label: "バイト数", value: "2 / 4" },
+                  { label: "状態", value: "待機中..." },
+                ],
+              },
+            },
+            {
+              no: 3,
+              title: "ワーカースレッドへ処理を委譲",
+              className: "TcpServer",
+              methodName: "afterPropertiesSet()",
+              callee: "TcpConnectionHandler#handle()",
+              code: "workerExecutor.submit(() -> connectionHandler.handle(socket));",
+              why: "接続処理を固定プール（tcp.server.threadPoolSize=10）で並行実行し、受け入れが滞らないようにするため。このコードは acceptExecutor に渡したラムダ内で実行される",
+              activeNodes: [
+                "TcpServer（acceptスレッド）",
+                "TcpConnectionHandler",
+              ],
+              requestRange: [0, 1],
+              responseRange: null,
+              decodeDetail: null,
+            },
+            {
+              no: 4,
+              title:
+                "ヘッダ4バイトを読み切るまでループ、2バイトで待機状態になる",
+              className: "TcpConnectionHandler",
+              methodName: "readFully()",
+              code: "while (totalRead < length) {\n    int read = input.read(buffer, totalRead, length - totalRead);\n    ...\n}",
+              why: "1回の read() で全量が届かない場合があるため、複数回読み込んで4バイトを読み切る。ここでは2バイト受信後、残り2バイトの到着を待つ",
+              activeNodes: ["TcpConnectionHandler"],
+              requestRange: [0, 1],
+              responseRange: null,
+              decodeDetail: {
+                type: "WAITING",
+                value: "バイト待機状態",
+                rows: [
+                  { label: "受信済みバイト", value: "2 / 4" },
+                  { label: "待機時間", value: "30秒のタイムアウト設定あり" },
+                  { label: "状態", value: "read()でブロック中..." },
+                ],
+              },
+            },
+            {
+              no: 5,
+              title:
+                "30秒のタイムアウト経過、SocketTimeoutExceptionが発生（エラー強調）",
+              className: "TcpConnectionHandler",
+              methodName: "readFully()",
+              code: "int read = input.read(buffer, totalRead, length - totalRead);\n// 30秒経過により SocketTimeoutException が throw される",
+              why: "Socket.setSoTimeout(30000)で設定した30秒の経過により、input.read(buffer, totalRead, length - totalRead)（Socket#getInputStream()で取得したInputStream）がSocketTimeoutExceptionをスロー。タイムアウトを設定していないと read() が無期限にブロックしワーカースレッドが専有されてしまう",
+              activeNodes: ["TcpConnectionHandler"],
+              isError: true,
+              errorNodes: ["TcpConnectionHandler"],
+              requestRange: [0, 1],
+              responseRange: null,
+              decodeDetail: {
+                type: "TIMEOUT",
+                value: "SocketTimeoutException",
+                rows: [
+                  { label: "設定タイムアウト", value: "30000ms (30秒)" },
+                  { label: "経過時間", value: "30秒以上" },
+                  { label: "イベント", value: "Exception発生" },
+                ],
+              },
+            },
+            {
+              no: 6,
+              title:
+                "try-with-resourcesが自動的にソケットをクローズ（リソース管理）",
+              className: "TcpConnectionHandler",
+              methodName: "handle()",
+              code: "try (socket) {\n    // ...\n} // ここで例外発生時も確実にsocket.close()が呼ばれる\ncatch (SocketTimeoutException e) {",
+              why: "readFully()で発生した例外が try-with-resources のスコープを抜けるため、Socketリソースが自動的にclose()される。その後、外側のcatch節に処理が進む",
+              activeNodes: ["TcpConnectionHandler"],
+              requestRange: null,
+              responseRange: null,
+              decodeDetail: {
+                type: "CLOSE",
+                value: "ソケットクローズ",
+                rows: [
+                  { label: "メソッド", value: "Socket.close()" },
+                  { label: "タイミング", value: "例外発生後の自動クローズ" },
+                  { label: "レスポンス", value: "返送なし" },
+                  { label: "状態", value: "リソース解放" },
+                ],
+              },
+            },
+            {
+              no: 7,
+              title: "catch節で例外を捕捉、スタックトレース出力（応答なし）",
+              className: "TcpConnectionHandler",
+              methodName: "handle()",
+              code: "} catch (SocketTimeoutException e) {\n    e.printStackTrace();\n}",
+              why: "タイムアウトは正常な接続終了として扱い、スタックトレースを記録した上で応答を返さずメソッドを終了。既にソケットはクローズ済み",
+              activeNodes: ["TcpConnectionHandler"],
+              requestRange: null,
+              responseRange: null,
+              decodeDetail: {
+                type: "CATCH",
+                value: "例外処理（タイムアウト）",
+                rows: [
+                  { label: "例外種別", value: "SocketTimeoutException" },
+                  { label: "処理", value: "e.printStackTrace()" },
+                  { label: "レスポンス", value: "返送なし" },
+                  {
+                    label: "補足",
+                    value:
+                      "対向先が2バイト送信後に切断した場合は read() が -1 を返し、bytesRead < 4 の判定で即座に return する（こちらも無応答）",
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ];
+
+      // Global state
+      let currentScenarioIndex = 0;
+      let currentStep = 0;
+      let isPlaying = false;
+      let playSpeed = 0.5;
+      let playTimer = null;
+      const baseStepDuration = 1400;
+
+      // Initialize
+      function init() {
+        renderScenarioTabs();
+        loadScenario(0);
+        setupEventListeners();
+        // ページ読み込み直後から最初のステップが表示されるように同期
+        renderAll();
+        updateStepDisplay();
+      }
+
+      function renderScenarioTabs() {
+        const tabsContainer = document.getElementById("scenarioTabs");
+        SCENARIOS.forEach((scenario, index) => {
+          const tab = document.createElement("button");
+          tab.className = "scenario-tab" + (index === 0 ? " active" : "");
+          tab.textContent = scenario.label;
+          tab.addEventListener("click", () => switchScenario(index));
+          tabsContainer.appendChild(tab);
+        });
+      }
+
+      function switchScenario(index) {
+        currentScenarioIndex = index;
+        currentStep = 0;
+        isPlaying = false;
+        // 多重再生を防ぐため、既存のタイマーをクリア
+        if (playTimer !== null) {
+          clearTimeout(playTimer);
+          playTimer = null;
+        }
+        document.querySelectorAll(".scenario-tab").forEach((tab, i) => {
+          tab.classList.toggle("active", i === index);
+        });
+        document.getElementById("playButton").style.display = "block";
+        document.getElementById("pauseButton").style.display = "none";
+        document.getElementById("stepSlider").value = 0;
+        loadScenario(index);
+        updateMaxSlider();
+        updateStepDisplay();
+        renderAll();
+      }
+
+      function loadScenario(index) {
+        const scenario = SCENARIOS[index];
+        document.getElementById("stepSlider").max = scenario.steps.length - 1;
+        updateMaxSlider();
+      }
+
+      function updateMaxSlider() {
+        const scenario = SCENARIOS[currentScenarioIndex];
+        document.getElementById("stepSlider").max = scenario.steps.length - 1;
+      }
+
+      function setupEventListeners() {
+        document.getElementById("stepSlider").addEventListener("input", (e) => {
+          currentStep = parseInt(e.target.value);
+          renderAll();
+          updateStepDisplay();
+        });
+
+        document.getElementById("playButton").addEventListener("click", () => {
+          isPlaying = true;
+          document.getElementById("playButton").style.display = "none";
+          document.getElementById("pauseButton").style.display = "block";
+          play();
+        });
+
+        document.getElementById("pauseButton").addEventListener("click", () => {
+          isPlaying = false;
+          // 多重再生を防ぐため、既存のタイマーをクリア
+          if (playTimer !== null) {
+            clearTimeout(playTimer);
+            playTimer = null;
+          }
+          document.getElementById("playButton").style.display = "block";
+          document.getElementById("pauseButton").style.display = "none";
+        });
+
+        document.querySelectorAll(".speed-button").forEach((btn) => {
+          btn.addEventListener("click", (e) => {
+            document
+              .querySelectorAll(".speed-button")
+              .forEach((b) => b.classList.remove("active"));
+            e.target.classList.add("active");
+            playSpeed = parseFloat(e.target.dataset.speed);
+          });
+        });
+
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "ArrowRight") {
+            const scenario = SCENARIOS[currentScenarioIndex];
+            currentStep = Math.min(currentStep + 1, scenario.steps.length - 1);
+            document.getElementById("stepSlider").value = currentStep;
+            renderAll();
+            updateStepDisplay();
+          } else if (e.key === "ArrowLeft") {
+            currentStep = Math.max(currentStep - 1, 0);
+            document.getElementById("stepSlider").value = currentStep;
+            renderAll();
+            updateStepDisplay();
+          } else if (e.key === " ") {
+            e.preventDefault();
+            if (isPlaying) {
+              isPlaying = false;
+              // 多重再生を防ぐため、既存のタイマーをクリア
+              if (playTimer !== null) {
+                clearTimeout(playTimer);
+                playTimer = null;
+              }
+              document.getElementById("playButton").style.display = "block";
+              document.getElementById("pauseButton").style.display = "none";
+            } else {
+              isPlaying = true;
+              document.getElementById("playButton").style.display = "none";
+              document.getElementById("pauseButton").style.display = "block";
+              play();
+            }
+          }
+        });
+      }
+
+      function play() {
+        if (!isPlaying) return;
+        const scenario = SCENARIOS[currentScenarioIndex];
+        if (currentStep >= scenario.steps.length - 1) {
+          isPlaying = false;
+          document.getElementById("playButton").style.display = "block";
+          document.getElementById("pauseButton").style.display = "none";
+          playTimer = null;
+          return;
+        }
+        currentStep++;
+        document.getElementById("stepSlider").value = currentStep;
+        renderAll();
+        updateStepDisplay();
+        // タイマーIDを保持して、後で解除できるようにする
+        playTimer = setTimeout(play, baseStepDuration / playSpeed);
+      }
+
+      function updateStepDisplay() {
+        const scenario = SCENARIOS[currentScenarioIndex];
+        document.getElementById("stepDisplay").textContent =
+          currentStep + 1 + " / " + scenario.steps.length;
+      }
+
+      function renderAll() {
+        renderSequenceDiagram();
+        renderByteView();
+        renderExplanation();
+      }
+
+      function renderSequenceDiagram() {
+        const scenario = SCENARIOS[currentScenarioIndex];
+        const step = scenario.steps[currentStep];
+        const container = document.getElementById("sequenceDiagram");
+        container.innerHTML = "";
+
+        NODES.forEach((node) => {
+          const nodeDiv = document.createElement("div");
+          nodeDiv.className = "node";
+          nodeDiv.textContent = node;
+
+          if (step.activeNodes && step.activeNodes.includes(node)) {
+            nodeDiv.classList.add("active");
+          } else if (
+            currentStep > 0 &&
+            scenario.steps
+              .slice(0, currentStep)
+              .some((s) => s.activeNodes && s.activeNodes.includes(node))
+          ) {
+            nodeDiv.classList.add("visited");
+          }
+
+          container.appendChild(nodeDiv);
+        });
+
+        // エラー強調の判定：ステップの isError フラグで判定
+        if (step.isError && step.errorNodes) {
+          // errorNodes に指定されたノードをエラー表示
+          step.errorNodes.forEach((errorNodeName) => {
+            const nodeElements = Array.from(
+              container.querySelectorAll(".node"),
+            );
+            const errorNode = nodeElements.find(
+              (n) => n.textContent === errorNodeName,
+            );
+            if (errorNode) {
+              errorNode.classList.remove("active");
+              errorNode.classList.add("error");
+            }
+          });
+        }
+      }
+
+      function renderByteView() {
+        const scenario = SCENARIOS[currentScenarioIndex];
+        const step = scenario.steps[currentStep];
+        const container = document.getElementById("byteView");
+        container.innerHTML = "";
+
+        // Request bytes
+        const requestSection = document.createElement("div");
+        requestSection.className = "byte-section";
+        const requestTitle = document.createElement("div");
+        requestTitle.className = "byte-section-title";
+        requestTitle.textContent = "リクエスト (18バイト)";
+        requestSection.appendChild(requestTitle);
+
+        const requestGrid = document.createElement("div");
+        requestGrid.className = "byte-grid";
+        scenario.requestBytes.forEach((byte, index) => {
+          const cell = document.createElement("div");
+          cell.className = "byte-cell";
+
+          // Determine field type
+          let fieldClass = "";
+          if (byte !== null) {
+            if (index < 4) fieldClass = "data-length";
+            else if (index >= 4 && index < 6) fieldClass = "message-type";
+            else if (index >= 6 && index < 14) fieldClass = "card-number";
+            else if (index >= 14 && index < 18) fieldClass = "amount";
+            cell.classList.add(fieldClass);
+          } else {
+            cell.style.backgroundColor = "#e5e7eb";
+          }
+
+          if (
+            step.requestRange &&
+            index >= step.requestRange[0] &&
+            index <= step.requestRange[1]
+          ) {
+            cell.classList.add("active");
+          }
+
+          const offset = document.createElement("div");
+          offset.className = "byte-offset";
+          offset.textContent = index;
+
+          const hex = document.createElement("div");
+          hex.className = "byte-hex";
+          if (byte === null) {
+            hex.textContent = "??";
+          } else {
+            hex.textContent =
+              "0x" + byte.toString(16).toUpperCase().padStart(2, "0");
+          }
+
+          const ascii = document.createElement("div");
+          ascii.className = "byte-ascii";
+          if (
+            byte !== null &&
+            (fieldClass === "data-length" || fieldClass === "message")
+          ) {
+            ascii.textContent = String.fromCharCode(byte);
+          }
+
+          cell.appendChild(offset);
+          cell.appendChild(hex);
+          if (ascii.textContent) cell.appendChild(ascii);
+          requestGrid.appendChild(cell);
+        });
+        requestSection.appendChild(requestGrid);
+        container.appendChild(requestSection);
+
+        // Response bytes: 現ステップまでに responseRange が定義されたステップを通過済みか判定
+        // 応答はまだ組み立てられていない状態では表示しない
+        const hasResponseInCurrentOrLater = scenario.steps
+          .slice(0, currentStep + 1)
+          .some((s) => s.responseRange);
+        if (scenario.responseBytes.length > 0 && hasResponseInCurrentOrLater) {
+          const responseSection = document.createElement("div");
+          responseSection.className = "byte-section";
+          const responseTitle = document.createElement("div");
+          responseTitle.className = "byte-section-title";
+          responseTitle.textContent = "レスポンス (53バイト)";
+          responseSection.appendChild(responseTitle);
+
+          const responseGrid = document.createElement("div");
+          responseGrid.className = "byte-grid";
+          scenario.responseBytes.forEach((byte, index) => {
+            const cell = document.createElement("div");
+            cell.className = "byte-cell";
+
+            // Determine field type for response
+            let fieldClass = "";
+            if (index < 4) fieldClass = "data-length";
+            else if (index >= 4 && index < 6) fieldClass = "message-type";
+            else if (index === 6) fieldClass = "return-code";
+            else if (index > 6) fieldClass = "message";
+
+            cell.classList.add(fieldClass);
+
+            if (
+              step.responseRange &&
+              index >= step.responseRange[0] &&
+              index <= step.responseRange[1]
+            ) {
+              cell.classList.add("active");
+            }
+
+            const offset = document.createElement("div");
+            offset.className = "byte-offset";
+            offset.textContent = index;
+
+            const hex = document.createElement("div");
+            hex.className = "byte-hex";
+            hex.textContent =
+              "0x" + byte.toString(16).toUpperCase().padStart(2, "0");
+
+            const ascii = document.createElement("div");
+            ascii.className = "byte-ascii";
+            if (fieldClass === "data-length" || fieldClass === "message") {
+              ascii.textContent = String.fromCharCode(byte);
+            }
+
+            cell.appendChild(offset);
+            cell.appendChild(hex);
+            if (ascii.textContent) cell.appendChild(ascii);
+            responseGrid.appendChild(cell);
+          });
+          responseSection.appendChild(responseGrid);
+          container.appendChild(responseSection);
+        } else if (scenario.id === "scenario5" && currentStep >= 5) {
+          // Scenario 5: タイムアウト - show "応答なし"
+          const responseSection = document.createElement("div");
+          responseSection.className = "byte-section";
+          const responseTitle = document.createElement("div");
+          responseTitle.className = "byte-section-title";
+          responseTitle.textContent = "レスポンス (53バイト)";
+          responseSection.appendChild(responseTitle);
+          const noResponse = document.createElement("div");
+          noResponse.style.padding = "20px";
+          noResponse.style.textAlign = "center";
+          noResponse.style.color = "#dc2626";
+          noResponse.style.fontWeight = "bold";
+          noResponse.textContent = "応答なし";
+          responseSection.appendChild(noResponse);
+          container.appendChild(responseSection);
+        }
+
+        // Decode detail
+        if (step.decodeDetail) {
+          const detailSection = document.createElement("div");
+          const detailBox = document.createElement("div");
+          detailBox.className = "decode-detail";
+
+          if (step.decodeDetail.rows) {
+            step.decodeDetail.rows.forEach((row) => {
+              const rowDiv = document.createElement("div");
+              rowDiv.className = "decode-detail-row";
+              const label = document.createElement("span");
+              label.className = "decode-detail-label";
+              label.textContent = row.label;
+              const value = document.createElement("span");
+              value.textContent = row.value;
+              rowDiv.appendChild(label);
+              rowDiv.appendChild(value);
+              detailBox.appendChild(rowDiv);
+            });
+          }
+
+          container.appendChild(detailBox);
+        }
+      }
+
+      function renderExplanation() {
+        const scenario = SCENARIOS[currentScenarioIndex];
+        const step = scenario.steps[currentStep];
+        const container = document.getElementById("explanationPanel");
+        container.innerHTML = "";
+
+        const section = document.createElement("div");
+        section.className = "explanation-section";
+
+        // Step number and title
+        const title = document.createElement("div");
+        title.className = "explanation-title";
+        title.textContent = "ステップ " + step.no + ": " + step.title;
+        section.appendChild(title);
+
+        // Step number
+        const stepNo = document.createElement("div");
+        stepNo.className = "explanation-step-no";
+        stepNo.textContent =
+          "(" + (currentStep + 1) + " / " + scenario.steps.length + ")";
+        section.appendChild(stepNo);
+
+        // Class and method
+        if (step.className || step.methodName) {
+          const method = document.createElement("div");
+          method.className = "explanation-method";
+          method.textContent =
+            (step.className || "") +
+            (step.methodName ? "#" + step.methodName : "");
+          section.appendChild(method);
+        }
+
+        // Callee (called function)
+        if (step.callee) {
+          const callee = document.createElement("div");
+          callee.className = "explanation-method";
+          callee.textContent = "呼び出し先: " + step.callee;
+          section.appendChild(callee);
+        }
+
+        // Code
+        if (step.code) {
+          const code = document.createElement("div");
+          code.className = "explanation-code";
+          code.textContent = step.code;
+          section.appendChild(code);
+        }
+
+        // Why
+        if (step.why) {
+          const why = document.createElement("div");
+          why.className = "explanation-why";
+          why.textContent = step.why;
+          section.appendChild(why);
+        }
+
+        // Note for specific steps
+        if (step.title && step.title.includes("未定義") && step.no === 10) {
+          const note = document.createElement("div");
+          note.className = "explanation-note";
+          note.textContent =
+            "補足：MessageType に定義済みでも対応する TcpController が登録されていない場合は dispatcher.resolve() が null を返し、同じくリターンコード91で応答します";
+          section.appendChild(note);
+        } else if (
+          step.title &&
+          step.title.includes("不正") &&
+          step.no === 10
+        ) {
+          const note = document.createElement("div");
+          note.className = "explanation-note";
+          note.textContent =
+            "補足：データ長項目が期待値14と一致しない場合は、ステップ6の検証で同じ例外経路に入り同一の応答となります";
+          section.appendChild(note);
+        } else if (
+          step.title &&
+          step.title.includes("タイムアウト") &&
+          step.no === 6
+        ) {
+          const note = document.createElement("div");
+          note.className = "explanation-note";
+          note.textContent =
+            "補足：対向先が2バイト送信後に切断した場合は read() が -1 を返してループを抜け、bytesRead < 4 の判定で即座に return します（こちらも無応答）";
+          section.appendChild(note);
+        }
+
+        container.appendChild(section);
+      }
+
+      // Start
+      init();
+    </script>
+  </body>
+</html>
