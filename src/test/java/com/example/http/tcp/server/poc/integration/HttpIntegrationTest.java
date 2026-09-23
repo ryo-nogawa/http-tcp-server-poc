@@ -139,6 +139,27 @@ class HttpIntegrationTest {
             assertTrue(timestampPattern.matcher(responseBody).find(),
                     "Response should contain formatted timestamp");
         }
+
+        @Test
+        @DisplayName("Given: 有効なGETリクエストが/tcp-visualizerに送信されたとき, "
+                + "When: リクエストを実行すると, "
+                + "Then: ステータス200が返されレスポンスHTMLにタイトルが含まれる")
+        void returns200AndResponseContainsTcpVisualizerTitleForTcpVisualizerEndpoint()
+                throws IOException, InterruptedException {
+            String url = "http://localhost:" + port + "/tcp-visualizer";
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response =
+                    httpClient.send(request, BodyHandlers.ofString());
+
+            assertEquals(200, response.statusCode());
+            String responseBody = response.body();
+            assertTrue(responseBody.contains("<title>TCP電文処理フロー可視化</title>"),
+                    "Response should contain TCP visualizer title");
+        }
     }
 
     @Nested
@@ -169,6 +190,24 @@ class HttpIntegrationTest {
         void returns405ForPostMethodOnGetHttpEndpoint()
                 throws IOException, InterruptedException {
             String url = "http://localhost:" + port + "/get-http";
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .POST(HttpRequest.BodyPublishers.noBody())
+                    .build();
+
+            HttpResponse<String> response =
+                    httpClient.send(request, BodyHandlers.ofString());
+
+            assertEquals(405, response.statusCode());
+        }
+
+        @Test
+        @DisplayName("Given: /tcp-visualizerへのPOSTリクエストが送信されたとき, "
+                + "When: リクエストを実行すると, "
+                + "Then: GETエンドポイントのためステータス405が返される")
+        void returns405ForPostMethodOnTcpVisualizerEndpoint()
+                throws IOException, InterruptedException {
+            String url = "http://localhost:" + port + "/tcp-visualizer";
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
                     .POST(HttpRequest.BodyPublishers.noBody())
